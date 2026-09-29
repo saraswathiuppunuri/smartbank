@@ -20,8 +20,244 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
-<body>
-    <!-- Top Navigation Bar -->
+<body class="{% if current_user %}sb-body-app{% else %}sb-body-guest{% endif %}">
+
+{% if current_user %}
+    <!-- ====================================================================
+         AUTHENTICATED APPLICATION LAYOUT (MODERN LEFT SIDEBAR NAVIGATION)
+         ==================================================================== -->
+    <div class="sb-app-container">
+        <!-- Sidebar Backdrop for Mobile Screens -->
+        <div class="sb-sidebar-backdrop" id="sidebarBackdrop"></div>
+
+        <!-- Left Navigation Sidebar -->
+        <aside class="sb-sidebar" id="sidebar">
+            <!-- Sidebar Brand Header -->
+            <div class="sb-sidebar-brand">
+                <a href="{{ url_for('admin.dashboard') if current_user.is_admin else url_for('customer.dashboard') }}" class="brand-link">
+                    <div class="brand-logo-icon">
+                        <i class="bi bi-bank2"></i>
+                    </div>
+                    <div>
+                        <div class="brand-name">Smart<span class="text-info">Bank</span></div>
+                        <div class="brand-sub">Core Banking System</div>
+                    </div>
+                </a>
+                <button type="button" class="btn btn-sm btn-link text-white-50 d-lg-none p-0" id="sidebarClose" aria-label="Close Sidebar">
+                    <i class="bi bi-x-lg fs-5"></i>
+                </button>
+            </div>
+
+            <!-- User Quick Profile Card -->
+            <div class="sb-sidebar-user">
+                <div class="user-avatar">
+                    {{ current_user.username[0]|upper }}
+                </div>
+                <div class="user-details">
+                    <div class="user-name" title="{{ current_user.username }}">
+                        {% if current_user.customer %}
+                            {{ current_user.customer.first_name }} {{ current_user.customer.last_name }}
+                        {% else %}
+                            {{ current_user.username }}
+                        {% endif %}
+                    </div>
+                    <div class="user-role">
+                        {% if current_user.is_admin %}
+                            <span class="badge bg-warning text-dark px-2 py-0" style="font-size: 0.65rem;">ADMIN</span>
+                        {% else %}
+                            <span class="text-info fw-semibold">{{ current_user.customer.customer_code if current_user.customer else 'CUSTOMER' }}</span>
+                        {% endif %}
+                        <span class="sb-status-dot online ms-1" title="Online"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Left Navigation Menu Items -->
+            <nav class="sb-sidebar-nav">
+                {% if current_user.is_admin %}
+                    <!-- Admin Navigation -->
+                    <div class="sb-nav-section-title">Administration</div>
+                    
+                    <a class="sb-sidebar-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}" href="{{ url_for('admin.dashboard') }}">
+                        <i class="bi bi-speedometer2 link-icon text-info"></i>
+                        <span>Dashboard</span>
+                    </a>
+
+                    <a class="sb-sidebar-link {% if request.endpoint in ['admin.customers', 'admin.customer_edit'] %}active{% endif %}" href="{{ url_for('admin.customers') }}">
+                        <i class="bi bi-people-fill link-icon text-primary"></i>
+                        <span>Customers</span>
+                    </a>
+
+                    <a class="sb-sidebar-link {% if request.endpoint == 'admin.accounts' %}active{% endif %}" href="{{ url_for('admin.accounts') }}">
+                        <i class="bi bi-wallet-fill link-icon text-success"></i>
+                        <span>Accounts</span>
+                    </a>
+
+                    <a class="sb-sidebar-link {% if request.endpoint == 'admin.transactions' %}active{% endif %}" href="{{ url_for('admin.transactions') }}">
+                        <i class="bi bi-journal-text link-icon text-warning"></i>
+                        <span>Transactions</span>
+                    </a>
+
+                    <div class="sb-nav-section-title">Branch Operations</div>
+
+                    <a class="sb-sidebar-link {% if request.endpoint and request.endpoint.startswith('branch_cash.') %}active{% endif %}" href="{{ url_for('branch_cash.admin_requests') }}">
+                        <i class="bi bi-building-fill-check link-icon text-warning"></i>
+                        <span>Cash Slips</span>
+                        <span class="badge bg-warning text-dark ms-auto" style="font-size: 0.62rem;">Fast-Track</span>
+                    </a>
+
+                {% else %}
+                    <!-- Customer Navigation -->
+                    <div class="sb-nav-section-title">Main Menu</div>
+
+                    <a class="sb-sidebar-link {% if request.endpoint == 'customer.dashboard' %}active{% endif %}" href="{{ url_for('customer.dashboard') }}">
+                        <i class="bi bi-grid-1x2-fill link-icon text-primary"></i>
+                        <span>Overview</span>
+                    </a>
+
+                    <a class="sb-sidebar-link {% if request.endpoint == 'customer.accounts' %}active{% endif %}" href="{{ url_for('customer.accounts') }}">
+                        <i class="bi bi-wallet2 link-icon text-info"></i>
+                        <span>My Accounts</span>
+                    </a>
+
+                    <div class="sb-nav-section-title">Transfers & Payments</div>
+
+                    <a class="sb-sidebar-link {% if request.endpoint == 'transactions.deposit' %}active{% endif %}" href="{{ url_for('transactions.deposit') }}">
+                        <i class="bi bi-arrow-down-circle-fill link-icon text-success"></i>
+                        <span>Deposit Funds</span>
+                    </a>
+
+                    <a class="sb-sidebar-link {% if request.endpoint == 'transactions.withdraw' %}active{% endif %}" href="{{ url_for('transactions.withdraw') }}">
+                        <i class="bi bi-arrow-up-circle-fill link-icon text-danger"></i>
+                        <span>Withdraw Money</span>
+                    </a>
+
+                    <a class="sb-sidebar-link {% if request.endpoint == 'transactions.transfer' %}active{% endif %}" href="{{ url_for('transactions.transfer') }}">
+                        <i class="bi bi-arrow-left-right link-icon text-info"></i>
+                        <span>Transfer Money</span>
+                    </a>
+
+                    <a class="sb-sidebar-link {% if request.endpoint == 'transactions.history' %}active{% endif %}" href="{{ url_for('transactions.history') }}">
+                        <i class="bi bi-clock-history link-icon text-light"></i>
+                        <span>History & Ledger</span>
+                    </a>
+
+                    <a class="sb-sidebar-link {% if request.endpoint == 'customer.beneficiaries' %}active{% endif %}" href="{{ url_for('customer.beneficiaries') }}">
+                        <i class="bi bi-person-lines-fill link-icon text-secondary"></i>
+                        <span>Beneficiaries</span>
+                    </a>
+
+                    <div class="sb-nav-section-title">Cards & Offline Banking</div>
+
+                    <a class="sb-sidebar-link {% if request.endpoint and request.endpoint.startswith('cards.') %}active{% endif %}" href="{{ url_for('cards.index') }}">
+                        <i class="bi bi-credit-card-2-front-fill link-icon text-warning"></i>
+                        <span>Debit Cards</span>
+                    </a>
+
+                    <a class="sb-sidebar-link {% if request.endpoint and request.endpoint.startswith('branch_cash.') %}active{% endif %}" href="{{ url_for('branch_cash.index') }}">
+                        <i class="bi bi-cash-coin link-icon text-info"></i>
+                        <span>Branch Cash Slips</span>
+                        <span class="badge bg-primary text-white ms-auto" style="font-size: 0.62rem;">Zero-Wait</span>
+                    </a>
+
+                    <div class="sb-nav-section-title">Settings & Profile</div>
+
+                    <a class="sb-sidebar-link {% if request.endpoint == 'customer.notifications' %}active{% endif %}" href="{{ url_for('customer.notifications') }}">
+                        <i class="bi bi-bell-fill link-icon text-warning"></i>
+                        <span>Notifications</span>
+                        {% if unread_notifications_count > 0 %}
+                            <span class="badge rounded-pill bg-danger ms-auto" style="font-size: 0.68rem;">
+                                {{ unread_notifications_count }}
+                            </span>
+                        {% endif %}
+                    </a>
+
+                    <a class="sb-sidebar-link {% if request.endpoint == 'customer.profile' %}active{% endif %}" href="{{ url_for('customer.profile') }}">
+                        <i class="bi bi-person-circle link-icon text-info"></i>
+                        <span>My Profile & KYC</span>
+                    </a>
+                {% endif %}
+            </nav>
+
+            <!-- Sidebar Bottom Footer with Logout -->
+            <div class="sb-sidebar-footer">
+                <a class="sb-sidebar-link text-danger mb-0" href="{{ url_for('auth.logout') }}">
+                    <i class="bi bi-box-arrow-right link-icon text-danger"></i>
+                    <span>Sign Out</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Right Main Application Layout -->
+        <div class="sb-app-main">
+            <!-- App Topbar Header -->
+            <header class="sb-topbar">
+                <div class="sb-topbar-left">
+                    <button class="sb-sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Toggle navigation">
+                        <i class="bi bi-list fs-5"></i>
+                    </button>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-semibold text-dark d-none d-sm-inline">
+                            {{ 'Management Console' if current_user.is_admin else 'Customer Internet Banking' }}
+                        </span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 small">
+                            <i class="bi bi-shield-check me-1"></i> Online
+                        </span>
+                    </div>
+                </div>
+
+                <div class="sb-topbar-right">
+                    {% if not current_user.is_admin %}
+                        <!-- Quick Transfer Action -->
+                        <a href="{{ url_for('transactions.transfer') }}" class="btn btn-sm btn-outline-primary d-none d-md-inline-flex align-items-center gap-1">
+                            <i class="bi bi-arrow-left-right"></i> Quick Transfer
+                        </a>
+
+                        <!-- Notifications Bell Icon -->
+                        <a href="{{ url_for('customer.notifications') }}" class="sb-icon-btn position-relative" title="Notifications">
+                            <i class="bi bi-bell fs-5 text-secondary"></i>
+                            {% if unread_notifications_count > 0 %}
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">
+                                    {{ unread_notifications_count }}
+                                </span>
+                            {% endif %}
+                        </a>
+                    {% endif %}
+
+                    <!-- User Profile Dropdown Menu -->
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-decoration-none dropdown-toggle text-dark" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2 fw-semibold" style="width: 36px; height: 36px;">
+                                {{ current_user.username[0]|upper }}
+                            </div>
+                            <div class="d-none d-md-block text-start me-1">
+                                <div class="fw-semibold text-dark small" style="line-height: 1.1;">{{ current_user.username }}</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">{{ 'Administrator' if current_user.is_admin else 'Verified Customer' }}</div>
+                            </div>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 py-2" style="min-width: 220px;">
+                            <li class="px-3 py-2 border-bottom">
+                                <div class="text-muted small">Signed in as</div>
+                                <div class="fw-bold text-dark small text-truncate">{{ current_user.email }}</div>
+                            </li>
+                            {% if not current_user.is_admin %}
+                                <li><a class="dropdown-item py-2" href="{{ url_for('customer.profile') }}"><i class="bi bi-person me-2 text-primary"></i>My Profile</a></li>
+                                <li><a class="dropdown-item py-2" href="{{ url_for('customer.accounts') }}"><i class="bi bi-wallet2 me-2 text-info"></i>My Accounts</a></li>
+                                <li><a class="dropdown-item py-2" href="{{ url_for('cards.index') }}"><i class="bi bi-credit-card-2-front me-2 text-warning"></i>Debit Cards</a></li>
+                                <li><a class="dropdown-item py-2" href="{{ url_for('branch_cash.index') }}"><i class="bi bi-cash-coin me-2 text-success"></i>Branch Cash Slips</a></li>
+                            {% else %}
+                                <li><a class="dropdown-item py-2" href="{{ url_for('branch_cash.admin_requests') }}"><i class="bi bi-building-fill-check me-2 text-warning"></i>Verify Cash Slips</a></li>
+                            {% endif %}
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li><a class="dropdown-item py-2 text-danger" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </header>
+{% else %}
+    <!-- ====================================================================
+         GUEST / PUBLIC SCREEN LAYOUT (LOGIN, REGISTER, LANDING)
+         ==================================================================== -->
     <nav class="navbar navbar-expand-lg sb-navbar sticky-top">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
@@ -29,160 +265,31 @@
                 <span>Smart<span class="text-primary-emphasis">Bank</span></span>
             </a>
             
-            <button class="navbar-toggler text-white border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler text-white border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarGuest" aria-controls="navbarGuest" aria-expanded="false" aria-label="Toggle navigation">
                 <i class="bi bi-list fs-2"></i>
             </button>
             
-            <div class="collapse navbar-collapse" id="navbarMain">
-                {% if current_user %}
-                    {% if current_user.is_admin %}
-                        <!-- Admin Navigation Links -->
-                        <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3">
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}" href="{{ url_for('admin.dashboard') }}">
-                                    <i class="bi bi-speedometer2 me-1"></i> Dashboard
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'admin.customers' %}active{% endif %}" href="{{ url_for('admin.customers') }}">
-                                    <i class="bi bi-people-fill me-1"></i> Customers
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'admin.accounts' %}active{% endif %}" href="{{ url_for('admin.accounts') }}">
-                                    <i class="bi bi-credit-card-2-front-fill me-1"></i> Accounts
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'admin.transactions' %}active{% endif %}" href="{{ url_for('admin.transactions') }}">
-                                    <i class="bi bi-journal-text me-1"></i> Transactions
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('branch_cash.') %}active{% endif %}" href="{{ url_for('branch_cash.admin_requests') }}">
-                                    <i class="bi bi-building-fill-check me-1 text-warning"></i> Cash Slips
-                                </a>
-                            </li>
-                        </ul>
-                    {% else %}
-                        <!-- Customer Navigation Links -->
-                        <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3">
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'customer.dashboard' %}active{% endif %}" href="{{ url_for('customer.dashboard') }}">
-                                    <i class="bi bi-grid-1x2-fill me-1"></i> Overview
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'customer.accounts' %}active{% endif %}" href="{{ url_for('customer.accounts') }}">
-                                    <i class="bi bi-wallet2 me-1"></i> Accounts
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'transactions.deposit' %}active{% endif %}" href="{{ url_for('transactions.deposit') }}">
-                                    <i class="bi bi-arrow-down-circle-fill me-1 text-success"></i> Deposit
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'transactions.withdraw' %}active{% endif %}" href="{{ url_for('transactions.withdraw') }}">
-                                    <i class="bi bi-arrow-up-circle-fill me-1 text-danger"></i> Withdraw
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'transactions.transfer' %}active{% endif %}" href="{{ url_for('transactions.transfer') }}">
-                                    <i class="bi bi-arrow-left-right me-1 text-info"></i> Transfer
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'transactions.history' %}active{% endif %}" href="{{ url_for('transactions.history') }}">
-                                    <i class="bi bi-clock-history me-1"></i> History
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint == 'customer.beneficiaries' %}active{% endif %}" href="{{ url_for('customer.beneficiaries') }}">
-                                    <i class="bi bi-person-lines-fill me-1"></i> Payees
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('cards.') %}active{% endif %}" href="{{ url_for('cards.index') }}">
-                                    <i class="bi bi-credit-card-2-front-fill me-1 text-warning"></i> Cards
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link {% if request.endpoint and request.endpoint.startswith('branch_cash.') %}active{% endif %}" href="{{ url_for('branch_cash.index') }}">
-                                    <i class="bi bi-cash-coin me-1 text-info"></i> Branch Cash
-                                </a>
-                            </li>
-                        </ul>
-                    {% endif %}
-
-                    <!-- Right Side User Menu -->
-                    <ul class="navbar-nav ms-auto align-items-lg-center">
-                        {% if not current_user.is_admin %}
-                            <!-- Notifications Bell -->
-                            <li class="nav-item me-2">
-                                <a class="nav-link position-relative px-2" href="{{ url_for('customer.notifications') }}" title="Notifications">
-                                    <i class="bi bi-bell-fill fs-5"></i>
-                                    {% if unread_notifications_count > 0 %}
-                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger sb-badge-notif">
-                                            {{ unread_notifications_count }}
-                                        </span>
-                                    {% endif %}
-                                </a>
-                            </li>
-                        {% endif %}
-
-                        <!-- User Profile Dropdown -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-weight: 600;">
-                                    {{ current_user.username[0]|upper }}
-                                </div>
-                                <span class="d-none d-md-inline">{{ current_user.username }}</span>
-                                {% if current_user.is_admin %}
-                                    <span class="badge bg-warning text-dark text-uppercase ms-1" style="font-size: 0.65rem;">Admin</span>
-                                {% endif %}
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
-                                <li class="px-3 py-2 text-muted small border-bottom">
-                                    Signed in as<br>
-                                    <strong class="text-dark">{{ current_user.email }}</strong>
-                                </li>
-                                {% if not current_user.is_admin %}
-                                    <li><a class="dropdown-item py-2" href="{{ url_for('customer.profile') }}"><i class="bi bi-person me-2"></i>My Profile</a></li>
-                                    <li><a class="dropdown-item py-2" href="{{ url_for('customer.accounts') }}"><i class="bi bi-wallet2 me-2"></i>Manage Accounts</a></li>
-                                    <li><a class="dropdown-item py-2" href="{{ url_for('cards.index') }}"><i class="bi bi-credit-card-2-front me-2"></i>Debit Cards</a></li>
-                                    <li><a class="dropdown-item py-2" href="{{ url_for('branch_cash.index') }}"><i class="bi bi-cash-coin me-2"></i>Branch Cash Slips</a></li>
-                                    <li><a class="dropdown-item py-2" href="{{ url_for('customer.notifications') }}"><i class="bi bi-bell me-2"></i>Notifications</a></li>
-                                {% else %}
-                                    <li><a class="dropdown-item py-2" href="{{ url_for('branch_cash.admin_requests') }}"><i class="bi bi-building-fill-check me-2"></i>Verify Cash Slips</a></li>
-                                {% endif %}
-                                <li><hr class="dropdown-divider my-1"></li>
-                                <li><a class="dropdown-item py-2 text-danger" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</a></li>
-                            </ul>
-                        </li>
-                    </ul>
-                {% else %}
-                    <!-- Guest Navigation Links -->
-                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'auth.login' %}active{% endif %}" href="{{ url_for('auth.login') }}">
-                                <i class="bi bi-lock me-1"></i> Sign In
-                            </a>
-                        </li>
-                        <li class="nav-item ms-lg-2">
-                            <a class="btn btn-primary btn-sm px-3" href="{{ url_for('auth.register') }}">
-                                <i class="bi bi-person-plus me-1"></i> Open Account
-                            </a>
-                        </li>
-                    </ul>
-                {% endif %}
+            <div class="collapse navbar-collapse" id="navbarGuest">
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'auth.login' %}active{% endif %}" href="{{ url_for('auth.login') }}">
+                            <i class="bi bi-lock me-1"></i> Sign In
+                        </a>
+                    </li>
+                    <li class="nav-item ms-lg-2">
+                        <a class="btn btn-primary btn-sm px-3" href="{{ url_for('auth.register') }}">
+                            <i class="bi bi-person-plus me-1"></i> Open Account
+                        </a>
+                    </li>
+                </ul>
             </div>
         </div>
     </nav>
+{% endif %}
 
     <!-- Main Content Area -->
-    <main class="main-wrapper">
-        <div class="container">
+    <main class="{% if current_user %}sb-content-wrapper{% else %}main-wrapper{% endif %}">
+        <div class="{% if current_user %}container-fluid px-0{% else %}container{% endif %}">
             <!-- Flash Message Alerts -->
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
@@ -214,7 +321,25 @@
         </div>
     </main>
 
-    <!-- Footer -->
+{% if current_user %}
+            <!-- App Footer -->
+            <footer class="sb-app-footer py-3 px-4 border-top bg-white mt-auto text-muted small">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div>
+                        <strong class="text-dark">{{ bank_name }}</strong> &copy; {{ current_year }}. All rights reserved.
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">
+                            <i class="bi bi-shield-check me-1"></i> 256-Bit SSL Encrypted
+                        </span>
+                        <span>Core Banking Server</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+{% else %}
+    <!-- Guest Footer -->
     <footer class="sb-footer">
         <div class="container">
             <div class="row align-items-center text-center text-md-start">
@@ -230,6 +355,7 @@
             </div>
         </div>
     </footer>
+{% endif %}
 
     <!-- Bootstrap 5.3 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
