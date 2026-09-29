@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications & Alerts{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-7">
+        <h3 class="fw-bold text-dark mb-1"><i class="bi bi-bell-fill text-primary me-2"></i>Activity Alerts & Notifications</h3>
+        <p class="text-muted small mb-0">System updates, security alerts, and financial transaction confirmations.</p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <form method="POST" action="{{ url_for('customer.mark_all_notifications_read') }}" class="d-inline">
+            <button type="submit" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-check2-all me-1"></i> Mark All as Read
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="card sb-card border-0 mb-4">
+    <div class="card-body p-0">
+        {% if notifications %}
+            <div class="list-group list-group-flush">
+                {% for n in notifications %}
+                    <div class="list-group-item p-3 border-bottom d-flex align-items-start gap-3 {{ 'bg-light' if not n.is_read else '' }}">
+                        <div class="mt-1 fs-4">
+                            <i class="bi {{ n.icon_class }}"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <h6 class="mb-0 fw-semibold text-dark">
+                                    {{ n.title }}
+                                    {% if not n.is_read %}
+                                        <span class="badge bg-danger ms-1" style="font-size: 0.65rem;">NEW</span>
+                                    {% endif %}
+                                </h6>
+                                <span class="text-muted small">{{ n.created_at|datetime_format }}</span>
+                            </div>
+                            <p class="mb-0 text-secondary small">{{ n.message }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-bell-slash fs-1 d-block mb-2 text-secondary"></i>
+                <h5 class="fw-semibold">No Notifications</h5>
+                <p class="small mb-0">You have no notification alerts at this time.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

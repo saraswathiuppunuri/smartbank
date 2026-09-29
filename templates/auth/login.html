@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card sb-card shadow-sm border-0 mt-3 mb-4">
+            <div class="card-body p-4 p-md-5">
+                <!-- Branding Header -->
+                <div class="text-center mb-4">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary mb-3" style="width: 60px; height: 60px;">
+                        <i class="bi bi-shield-lock-fill fs-2"></i>
+                    </div>
+                    <h3 class="fw-bold text-dark">Welcome to SmartBank</h3>
+                    <p class="text-muted small">Sign in to access your secure Internet Banking portal</p>
+                </div>
+
+                <!-- Login Form -->
+                <form method="POST" action="{{ url_for('auth.login') }}">
+                    <div class="mb-3">
+                        <label for="identifier" class="form-label">Username or Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" class="form-control" id="identifier" name="identifier" value="{{ identifier or '' }}" placeholder="e.g. rahul_sharma or admin" required autofocus>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label for="password" class="form-label mb-0">Password</label>
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-key"></i></span>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-4 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember" name="remember" checked>
+                        <label class="form-check-label text-muted small" for="remember">Keep me logged in on this device</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fs-6 mb-3">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> Sign In to Portal
+                    </button>
+                </form>
+
+                <!-- Demo Credentials Quick Selector -->
+                <div class="border rounded p-3 bg-light mb-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="fw-semibold small text-secondary"><i class="bi bi-lightning-charge-fill text-warning me-1"></i>Demo Credentials</span>
+                        <span class="badge bg-secondary-subtle text-secondary small">Click to autofill</span>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm text-start" onclick="fillCredentials('rahul_sharma', 'Password@123')">
+                            <i class="bi bi-person-fill me-1"></i> Customer: <strong>rahul_sharma</strong> / Password@123
+                        </button>
+                        <button type="button" class="btn btn-outline-dark btn-sm text-start" onclick="fillCredentials('admin', 'Admin@1234')">
+                            <i class="bi bi-shield-lock-fill me-1"></i> Admin: <strong>admin</strong> / Admin@1234
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <p class="text-muted small mb-0">
+                        Don't have an account with us? 
+                        <a href="{{ url_for('auth.register') }}" class="text-primary fw-semibold text-decoration-none">Open an Account</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function fillCredentials(user, pass) {
+    document.getElementById('identifier').value = user;
+    document.getElementById('password').value = pass;
+}
+</script>
+{% endblock %}

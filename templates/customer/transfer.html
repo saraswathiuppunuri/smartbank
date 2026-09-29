@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Fund Transfer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7 col-md-9">
+        <div class="card sb-card border-0 my-3">
+            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-primary-subtle text-primary p-2">
+                    <i class="bi bi-arrow-left-right fs-3"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0 fw-bold text-dark">Direct Fund Transfer</h4>
+                    <p class="text-muted small mb-0">Instant, secure inter-account and beneficiary money transfer</p>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('transactions.transfer') }}">
+                    <!-- Source Account Selection -->
+                    <div class="mb-3">
+                        <label for="source_account_id" class="form-label">Transfer From (Debit Account) <span class="text-danger">*</span></label>
+                        <select class="form-select" id="source_account_id" name="source_account_id" required>
+                            {% for acc in accounts %}
+                                <option value="{{ acc.id }}">
+                                    {{ acc.account_type }} - {{ acc.account_number }} (Available: {{ acc.balance|currency }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Beneficiary Quick-Select Dropdown -->
+                    {% if beneficiaries %}
+                        <div class="mb-3 bg-light rounded p-3 border">
+                            <label for="beneficiaryQuickSelect" class="form-label fw-semibold text-secondary">
+                                <i class="bi bi-person-check me-1 text-primary"></i>Choose from Saved Payees
+                            </label>
+                            <select class="form-select" id="beneficiaryQuickSelect">
+                                <option value="">-- Or enter recipient account number manually below --</option>
+                                {% for b in beneficiaries %}
+                                    <option value="{{ b.account_number }}" {% if prefill_beneficiary == b.account_number %}selected{% endif %}>
+                                        {{ b.name }} ({{ b.account_number }} - {{ b.bank_name }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    {% endif %}
+
+                    <!-- Recipient Account Number -->
+                    <div class="mb-3">
+                        <label for="recipient_account_number" class="form-label">Recipient Account Number <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-credit-card-2-front"></i></span>
+                            <input type="text" class="form-control form-control-lg account-badge" id="recipient_account_number" name="recipient_account_number" value="{{ prefill_beneficiary or '' }}" placeholder="Enter 12-digit account number" required>
+                        </div>
+                        <div class="form-text text-muted small">Must be a valid active SmartBank account number.</div>
+                    </div>
+
+                    <!-- Transfer Amount -->
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Transfer Amount (₹) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" step="0.01" min="1" class="form-control form-control-lg" id="amount" name="amount" placeholder="0.00" required data-preview="transferLivePreview">
+                        </div>
+                        <div class="form-text small text-primary mt-1 d-none">
+                            Transferring: <strong id="transferLivePreview">₹0.00</strong>
+                        </div>
+                    </div>
+
+                    <!-- Purpose / Remark -->
+                    <div class="mb-4">
+                        <label for="description" class="form-label">Transfer Remark / Reference Purpose</label>
+                        <input type="text" class="form-control" id="description" name="description" placeholder="e.g. Rent, College Fees, Loan Repayment, Gift">
+                    </div>
+
+                    <!-- Safety Confirmation Note -->
+                    <div class="alert alert-secondary py-2 px-3 small d-flex align-items-center mb-4">
+                        <i class="bi bi-shield-check me-2 fs-5 text-success"></i>
+                        <div>Transfers are executed atomically. If the recipient account cannot be credited, your funds will be instantly rolled back.</div>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between pt-2">
+                        <a href="{{ url_for('customer.dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Dashboard
+                        </a>
+                        <button type="submit" class="btn btn-primary px-4 py-2">
+                            <i class="bi bi-send-check-fill me-1"></i> Authorize Transfer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

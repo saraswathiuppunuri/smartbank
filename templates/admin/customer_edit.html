@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Customer: {{ customer.full_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card sb-card border-0 my-3">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-circle bg-primary-subtle text-primary p-2">
+                        <i class="bi bi-pencil-square fs-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="mb-0 fw-bold text-dark">Edit Customer: {{ customer.full_name }}</h4>
+                        <span class="text-muted small">ID: <strong class="account-badge text-dark">{{ customer.customer_code }}</strong> (Username: @{{ customer.user.username }})</span>
+                    </div>
+                </div>
+                <a href="{{ url_for('admin.customers') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Customers
+                </a>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('admin.edit_customer', customer_id=customer.id) }}">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">First Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="first_name" value="{{ customer.first_name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="last_name" value="{{ customer.last_name }}" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" name="email" value="{{ customer.user.email }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone Number <span class="text-danger">*</span></label>
+                            <input type="tel" class="form-control" name="phone" value="{{ customer.phone }}" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">KYC Compliance Status</label>
+                            <select class="form-select" name="kyc_status">
+                                <option value="VERIFIED" {% if customer.kyc_status == 'VERIFIED' %}selected{% endif %}>VERIFIED (Fully Compliant)</option>
+                                <option value="PENDING" {% if customer.kyc_status == 'PENDING' %}selected{% endif %}>PENDING (Documentation in Review)</option>
+                                <option value="REJECTED" {% if customer.kyc_status == 'REJECTED' %}selected{% endif %}>REJECTED (Non-compliant)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Account Creation Date</label>
+                            <input type="text" class="form-control" value="{{ customer.created_at.strftime('%d %B %Y, %I:%M %p') }}" disabled>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Street Address</label>
+                        <input type="text" class="form-control" name="address" value="{{ customer.address or '' }}">
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label">City</label>
+                            <input type="text" class="form-control" name="city" value="{{ customer.city or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">State</label>
+                            <input type="text" class="form-control" name="state" value="{{ customer.state or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Pincode</label>
+                            <input type="text" class="form-control" name="pincode" value="{{ customer.pincode or '' }}">
+                        </div>
+                    </div>
+
+                    <!-- Associated Accounts List -->
+                    <div class="border rounded p-3 bg-light mb-4">
+                        <h6 class="fw-bold text-dark mb-2"><i class="bi bi-wallet2 me-1"></i>Active Accounts for this Customer</h6>
+                        <ul class="list-unstyled mb-0 small">
+                            {% for acc in customer.accounts %}
+                                <li class="d-flex justify-content-between py-1 border-bottom">
+                                    <span><strong>{{ acc.account_number }}</strong> ({{ acc.account_type }})</span>
+                                    <span class="text-primary fw-bold">{{ acc.balance|currency }} [{{ acc.status }}]</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <div class="d-flex justify-content-between pt-2">
+                        <a href="{{ url_for('admin.customers') }}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-save me-1"></i> Update Customer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,571 @@
+{% extends "base.html" %}
+
+{% block title %}Debit Cards Management & Usage{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row align-items-center mb-4">
+    <div class="col-md-7">
+        <h3 class="fw-bold text-dark mb-1"><i class="bi bi-credit-card-2-front-fill text-primary me-2"></i>Debit Card Services & Security Hub</h3>
+        <p class="text-muted small mb-0">Manage digital card controls, daily limits, channel permissions, and test transactions via the payment simulator.</p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#applyCardModal">
+            <i class="bi bi-plus-circle me-1"></i> Apply for New Debit Card
+        </button>
+    </div>
+</div>
+
+{% if cards %}
+    <!-- Cards Carousel / Grid -->
+    <div class="row g-4 mb-5">
+        {% for card in cards %}
+            <div class="col-xl-6">
+                <div class="card sb-card border-0 h-100 p-3">
+                    <div class="row g-3 align-items-center">
+                        <!-- Visual Card Widget -->
+                        <div class="col-md-6">
+                            <div class="debit-card-visual card-{{ card.card_network.lower() }} {% if card.is_locked %}card-locked{% elif card.is_blocked %}card-blocked{% endif %}">
+                                <!-- Top Row: Brand & Status -->
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <i class="bi bi-bank2 fs-5"></i>
+                                        <span class="fw-bold tracking-tight">SmartBank</span>
+                                    </div>
+                                    <span class="badge {{ card.status_badge_class }} small">
+                                        <i class="bi {{ 'bi-check-circle-fill' if card.is_active else ('bi-lock-fill' if card.is_locked else 'bi-slash-circle-fill') }} me-1"></i>
+                                        {{ card.status }}
+                                    </span>
+                                </div>
+
+                                <!-- Middle: Chip & Contactless -->
+                                <div class="d-flex justify-content-between align-items-center my-2">
+                                    <div class="card-emv-chip"></div>
+                                    <div class="card-contactless-wave" title="Contactless Enabled">
+                                        <i class="bi bi-reception-4"></i>
+                                    </div>
+                                </div>
+
+                                <!-- Card Number -->
+                                <div class="my-2">
+                                    <div class="card-number-display" id="cardNum{{ card.id }}" data-full="{{ card.formatted_card_number }}" data-masked="{{ card.masked_card_number }}">
+                                        {{ card.masked_card_number }}
+                                    </div>
+                                    <button type="button" class="btn btn-link text-white-50 p-0 text-decoration-none small" onclick="toggleCardMask('{{ card.id }}', this)">
+                                        <i class="bi bi-eye me-1"></i> Show Number
+                                    </button>
+                                </div>
+
+                                <!-- Bottom Row: Holder, Expiry, CVV & Network -->
+                                <div class="d-flex justify-content-between align-items-end mt-2 pt-2 border-top border-white-50">
+                                    <div>
+                                        <div class="card-meta-label">Cardholder</div>
+                                        <div class="card-holder-name text-truncate" style="max-width: 130px;">{{ card.card_holder_name }}</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="card-meta-label">Expires</div>
+                                        <div class="card-meta-val">{{ card.expiry_display }}</div>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="card-meta-label">CVV</div>
+                                        <div class="card-meta-val">
+                                            <span id="cvvVal{{ card.id }}" data-cvv="{{ card.cvv }}">•••</span>
+                                            <i class="bi bi-eye-slash text-white-50 ms-1" style="cursor: pointer;" onclick="toggleCvv('{{ card.id }}', this)"></i>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="card-network-badge text-warning">{{ card.card_network }}</span>
+                                        <div class="card-meta-label text-white-50">{{ card.card_type }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Controls & Metrics Column -->
+                        <div class="col-md-6">
+                            <div class="d-flex flex-column justify-content-between h-100">
+                                <!-- Linked Account & Limits -->
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="text-muted small">Linked Account</span>
+                                        <span class="account-badge fw-bold text-dark small">{{ card.account.account_number }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted small">Available Balance</span>
+                                        <span class="fw-bold text-primary">{{ card.account.balance|currency }}</span>
+                                    </div>
+                                    <div class="bg-light rounded p-2 border mb-2 small">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span class="text-muted">Daily Limit:</span>
+                                            <strong class="text-dark">{{ card.daily_limit|currency }}</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <span class="text-muted">Spent Today:</span>
+                                            <span class="text-danger fw-semibold">{{ card.spent_today|currency }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span class="text-muted">Remaining Today:</span>
+                                            <span class="text-success fw-bold">{{ card.remaining_daily_limit|currency }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Security Switches -->
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                                        <span class="small fw-medium"><i class="bi bi-globe me-1 text-primary"></i>Online Payments</span>
+                                        <form method="POST" action="{{ url_for('cards.toggle_channel', card_id=card.id) }}">
+                                            <input type="hidden" name="channel" value="online">
+                                            <div class="form-check form-switch m-0">
+                                                <input class="form-check-input" type="checkbox" onchange="this.form.submit()" {% if card.is_online_enabled %}checked{% endif %} {% if card.is_blocked %}disabled{% endif %}>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                                        <span class="small fw-medium"><i class="bi bi-reception-4 me-1 text-success"></i>Contactless Tap</span>
+                                        <form method="POST" action="{{ url_for('cards.toggle_channel', card_id=card.id) }}">
+                                            <input type="hidden" name="channel" value="contactless">
+                                            <div class="form-check form-switch m-0">
+                                                <input class="form-check-input" type="checkbox" onchange="this.form.submit()" {% if card.is_contactless_enabled %}checked{% endif %} {% if card.is_blocked %}disabled{% endif %}>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center py-1">
+                                        <span class="small fw-medium"><i class="bi bi-airplane me-1 text-info"></i>International</span>
+                                        <form method="POST" action="{{ url_for('cards.toggle_channel', card_id=card.id) }}">
+                                            <input type="hidden" name="channel" value="international">
+                                            <div class="form-check form-switch m-0">
+                                                <input class="form-check-input" type="checkbox" onchange="this.form.submit()" {% if card.is_international_enabled %}checked{% endif %} {% if card.is_blocked %}disabled{% endif %}>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="d-flex flex-wrap gap-2 pt-2 border-top">
+                                    <!-- Lock / Unlock -->
+                                    <form method="POST" action="{{ url_for('cards.toggle_lock', card_id=card.id) }}" class="flex-fill">
+                                        <button type="submit" class="btn btn-sm w-100 {{ 'btn-outline-warning' if card.is_active else 'btn-outline-success' }}" {% if card.is_blocked %}disabled{% endif %}>
+                                            <i class="bi {{ 'bi-lock-fill' if card.is_active else 'bi-unlock-fill' }} me-1"></i>
+                                            {{ 'Freeze Card' if card.is_active else 'Unfreeze' }}
+                                        </button>
+                                    </form>
+
+                                    <!-- Adjust Limit -->
+                                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill" data-bs-toggle="modal" data-bs-target="#limitModal{{ card.id }}" {% if card.is_blocked %}disabled{% endif %}>
+                                        <i class="bi bi-sliders me-1"></i> Limit
+                                    </button>
+
+                                    <!-- Change PIN -->
+                                    <button type="button" class="btn btn-sm btn-outline-primary flex-fill" data-bs-toggle="modal" data-bs-target="#pinModal{{ card.id }}" {% if card.is_blocked %}disabled{% endif %}>
+                                        <i class="bi bi-key-fill me-1"></i> PIN
+                                    </button>
+
+                                    <!-- Block Card -->
+                                    {% if not card.is_blocked %}
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#blockModal{{ card.id }}" title="Block Card">
+                                            <i class="bi bi-shield-x"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal: Adjust Limit -->
+            <div class="modal fade" id="limitModal{{ card.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title"><i class="bi bi-sliders me-2"></i>Set Daily Spending Limit</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form method="POST" action="{{ url_for('cards.update_limit', card_id=card.id) }}">
+                            <div class="modal-body p-4">
+                                <p class="text-muted small">Adjust the maximum combined card transaction cap per day for card ending in <strong>{{ card.card_number[-4:] }}</strong>.</p>
+                                <div class="mb-3">
+                                    <label class="form-label">Daily Limit (₹)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">₹</span>
+                                        <input type="number" step="500" min="500" max="200000" class="form-control" name="daily_limit" value="{{ card.daily_limit }}" required>
+                                    </div>
+                                    <div class="form-text small text-muted">Min: ₹500.00 | Max: ₹2,00,000.00</div>
+                                </div>
+                            </div>
+                            <div class="modal-footer bg-light">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Update Limit</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal: Change PIN -->
+            <div class="modal fade" id="pinModal{{ card.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title"><i class="bi bi-key-fill me-2"></i>Change 4-Digit ATM PIN</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form method="POST" action="{{ url_for('cards.set_pin', card_id=card.id) }}">
+                            <div class="modal-body p-4">
+                                <p class="text-muted small">Update the ATM and Point-of-Sale (POS) PIN for card ending in <strong>{{ card.card_number[-4:] }}</strong>.</p>
+                                <div class="mb-3">
+                                    <label class="form-label">New 4-Digit PIN</label>
+                                    <input type="password" maxlength="4" pattern="[0-9]{4}" class="form-control text-center fs-5 letter-spacing-lg" name="new_pin" placeholder="••••" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Confirm New PIN</label>
+                                    <input type="password" maxlength="4" pattern="[0-9]{4}" class="form-control text-center fs-5 letter-spacing-lg" name="confirm_pin" placeholder="••••" required>
+                                </div>
+                            </div>
+                            <div class="modal-footer bg-light">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-warning"><i class="bi bi-check2-circle me-1"></i>Change PIN</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal: Block Card -->
+            <div class="modal fade" id="blockModal{{ card.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title"><i class="bi bi-shield-x me-2"></i>Permanently Block Card</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form method="POST" action="{{ url_for('cards.block_card', card_id=card.id) }}">
+                            <div class="modal-body p-4 text-center">
+                                <i class="bi bi-exclamation-triangle-fill text-danger fs-1 mb-2 d-block"></i>
+                                <h5 class="fw-bold text-dark">Are you sure?</h5>
+                                <p class="text-muted small mb-0">Blocking card <strong>{{ card.masked_card_number }}</strong> is <strong>permanent</strong>. Any scheduled merchant payments will be rejected. You can issue a replacement card anytime.</p>
+                            </div>
+                            <div class="modal-footer bg-light">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-danger"><i class="bi bi-slash-circle me-1"></i>Block Card Immediately</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- Interactive Debit Card Usage Simulator (POS & ATM) -->
+    <!-- ================================================================ -->
+    <div class="card sb-card border-0 mb-5">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+            <div>
+                <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-cpu-fill text-primary me-2"></i>Debit Card Transaction Simulator</h5>
+                <p class="text-muted small mb-0">Test online e-commerce checkout and ATM cash withdrawal workflows in real-time.</p>
+            </div>
+            <span class="badge bg-primary-subtle text-primary">Interactive Sandbox</span>
+        </div>
+        <div class="card-body p-4">
+            <!-- Simulator Tabs -->
+            <ul class="nav nav-pills nav-fill mb-4 p-1 bg-light rounded" id="simTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active fw-semibold" id="online-pos-tab" data-bs-toggle="pill" data-bs-target="#online-pos" type="button" role="tab">
+                        <i class="bi bi-cart-check-fill me-2"></i>Simulate Online E-Commerce / POS Purchase
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-semibold" id="atm-sim-tab" data-bs-toggle="pill" data-bs-target="#atm-sim" type="button" role="tab">
+                        <i class="bi bi-cash-stack me-2"></i>Simulate ATM Cash Withdrawal (with PIN)
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="simTabsContent">
+                <!-- Tab 1: Online POS Purchase -->
+                <div class="tab-pane fade show active" id="online-pos" role="tabpanel">
+                    <form method="POST" action="{{ url_for('cards.simulate_online_payment') }}" id="onlinePayForm">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Select Card to Transact With</label>
+                                <select class="form-select" id="simCardSelect" onchange="autoFillSimFields(this)">
+                                    <option value="">-- Choose Card --</option>
+                                    {% for card in cards %}
+                                        <option value="{{ card.card_number }}" 
+                                                data-month="{{ card.expiry_month }}" 
+                                                data-year="{{ card.expiry_year }}" 
+                                                data-cvv="{{ card.cvv }}">
+                                            {{ card.card_network }} {{ card.masked_card_number }} (Bal: {{ card.account.balance|currency }}) - [{{ card.status }}]
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Merchant / Store Name</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" name="merchant" id="simMerchant" value="Amazon India" required>
+                                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">Presets</button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="setMerchant('Amazon India')">Amazon India</a></li>
+                                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="setMerchant('Flipkart Online')">Flipkart Online</a></li>
+                                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="setMerchant('Starbucks Coffee POS')">Starbucks Coffee POS</a></li>
+                                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="setMerchant('Apple Store India')">Apple Store India</a></li>
+                                        <li><a class="dropdown-item" href="javascript:void(0)" onclick="setMerchant('Swiggy Food Delivery')">Swiggy Food Delivery</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">16-Digit Card Number</label>
+                                <input type="text" class="form-control account-badge" name="card_number" id="simCardNumber" placeholder="4532XXXXXXXXXXXX" required>
+                            </div>
+
+                            <div class="col-md-2">
+                                <label class="form-label">Exp Month</label>
+                                <input type="number" min="1" max="12" class="form-control text-center" name="expiry_month" id="simExpMonth" placeholder="MM" required>
+                            </div>
+
+                            <div class="col-md-2">
+                                <label class="form-label">Exp Year</label>
+                                <input type="number" min="{{ current_year }}" max="{{ current_year + 10 }}" class="form-control text-center" name="expiry_year" id="simExpYear" placeholder="YYYY" required>
+                            </div>
+
+                            <div class="col-md-2">
+                                <label class="form-label">CVV Code</label>
+                                <input type="password" maxlength="4" class="form-control text-center account-badge" name="cvv" id="simCvv" placeholder="•••" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Purchase Amount (₹)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" step="0.01" min="1" class="form-control" name="amount" placeholder="e.g. 1499.00" required>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 d-flex align-items-end">
+                                <button type="submit" class="btn btn-success w-100 py-2 fs-6">
+                                    <i class="bi bi-shield-check me-1"></i> Authorize & Process Card Payment
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Tab 2: ATM Cash Withdrawal -->
+                <div class="tab-pane fade" id="atm-sim" role="tabpanel">
+                    <form method="POST" action="{{ url_for('cards.simulate_atm_withdrawal') }}">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Select ATM Card</label>
+                                <select class="form-select" name="card_number" required>
+                                    <option value="">-- Choose Card --</option>
+                                    {% for card in cards %}
+                                        <option value="{{ card.card_number }}">
+                                            {{ card.card_network }} {{ card.masked_card_number }} (Bal: {{ card.account.balance|currency }})
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Enter 4-Digit ATM PIN</label>
+                                <input type="password" maxlength="4" pattern="[0-9]{4}" class="form-control text-center account-badge fs-5" name="pin" placeholder="••••" required>
+                                <div class="form-text small text-muted">PIN configured during card issuance.</div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label">Withdrawal Amount (₹)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₹</span>
+                                    <input type="number" step="100" min="100" max="50000" class="form-control" name="amount" placeholder="e.g. 2000" required>
+                                </div>
+                                <div class="form-text small text-muted">Multiples of ₹100 or ₹500.</div>
+                            </div>
+
+                            <div class="col-12 text-end pt-2">
+                                <button type="submit" class="btn btn-danger px-4 py-2 fs-6">
+                                    <i class="bi bi-cash-stack me-1"></i> Dispense Cash at ATM
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- Recent Debit Card Transactions Ledger -->
+    <!-- ================================================================ -->
+    <div class="card sb-card border-0">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+            <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-clock-history text-primary me-2"></i>Recent Debit Card Ledger Records</h5>
+            <a href="{{ url_for('transactions.history') }}" class="btn btn-sm btn-outline-secondary py-0 px-2">View Full Ledger</a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table sb-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Ref Number</th>
+                            <th>Card / Account</th>
+                            <th>Type</th>
+                            <th>Merchant / Purpose</th>
+                            <th>Timestamp</th>
+                            <th class="text-end">Amount</th>
+                            <th class="text-end">Balance After</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if card_transactions %}
+                            {% for txn in card_transactions %}
+                                <tr>
+                                    <td><span class="account-badge fw-semibold small text-dark">{{ txn.transaction_ref }}</span></td>
+                                    <td>
+                                        <span class="badge bg-dark text-white account-badge small">{{ txn.card.masked_card_number if txn.card else 'Card' }}</span>
+                                    </td>
+                                    <td><span class="badge {{ txn.badge_class }} small">{{ txn.transaction_type.replace('_', ' ') }}</span></td>
+                                    <td class="small fw-medium text-dark">{{ txn.description }}</td>
+                                    <td class="text-muted small">{{ txn.created_at|datetime_format }}</td>
+                                    <td class="text-end fw-bold text-danger">-{{ txn.amount|currency }}</td>
+                                    <td class="text-end fw-semibold text-dark small">{{ txn.balance_after|currency }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">No debit card transactions recorded yet. Use the simulator above to test transactions!</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+{% else %}
+    <!-- Empty State: No Cards Yet -->
+    <div class="card sb-card border-0 py-5 text-center my-4">
+        <div class="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center mx-auto mb-3" style="width: 80px; height: 80px;">
+            <i class="bi bi-credit-card-2-front fs-1"></i>
+        </div>
+        <h4 class="fw-bold text-dark">No Debit Cards Issued</h4>
+        <p class="text-muted small mb-4">You have not issued a debit card for your accounts yet. Apply for a card in seconds.</p>
+        <div>
+            <button type="button" class="btn btn-primary px-4 py-2" data-bs-toggle="modal" data-bs-target="#applyCardModal">
+                <i class="bi bi-plus-circle me-1"></i> Apply for Instant Debit Card
+            </button>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Modal: Apply for New Debit Card -->
+<div class="modal fade" id="applyCardModal" tabindex="-1" aria-labelledby="applyCardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="applyCardModalLabel"><i class="bi bi-credit-card me-2"></i>Apply for SmartBank Debit Card</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('cards.apply_card') }}">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label">Link to Bank Account <span class="text-danger">*</span></label>
+                        <select class="form-select" name="account_id" required>
+                            {% for acc in accounts %}
+                                <option value="{{ acc.id }}">
+                                    {{ acc.account_type }} Account - {{ acc.account_number }} (Bal: {{ acc.balance|currency }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Card Payment Network</label>
+                            <select class="form-select" name="card_network">
+                                <option value="VISA">VISA</option>
+                                <option value="MASTERCARD">Mastercard</option>
+                                <option value="RUPAY">RuPay (National)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Card Tier</label>
+                            <select class="form-select" name="card_type">
+                                <option value="Platinum">Platinum (High Rewards)</option>
+                                <option value="Classic">Classic Standard</option>
+                                <option value="Business">Business Elite</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Set 4-Digit ATM PIN <span class="text-danger">*</span></label>
+                            <input type="password" maxlength="4" pattern="[0-9]{4}" class="form-control text-center account-badge fs-5" name="pin" placeholder="••••" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Confirm ATM PIN <span class="text-danger">*</span></label>
+                            <input type="password" maxlength="4" pattern="[0-9]{4}" class="form-control text-center account-badge fs-5" name="confirm_pin" placeholder="••••" required>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info py-2 px-3 small d-flex align-items-center mb-0">
+                        <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+                        <div>Default daily transaction limit is set to ₹50,000.00 and can be customized anytime.</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Issue Card Instantly</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleCardMask(cardId, btn) {
+    const el = document.getElementById('cardNum' + cardId);
+    if (!el) return;
+    if (el.textContent.trim() === el.dataset.masked) {
+        el.textContent = el.dataset.full;
+        btn.innerHTML = '<i class="bi bi-eye-slash me-1"></i> Hide Number';
+    } else {
+        el.textContent = el.dataset.masked;
+        btn.innerHTML = '<i class="bi bi-eye me-1"></i> Show Number';
+    }
+}
+
+function toggleCvv(cardId, icon) {
+    const el = document.getElementById('cvvVal' + cardId);
+    if (!el) return;
+    if (el.textContent.trim() === '•••') {
+        el.textContent = el.dataset.cvv;
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+    } else {
+        el.textContent = '•••';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+    }
+}
+
+function autoFillSimFields(selectEl) {
+    const opt = selectEl.options[selectEl.selectedIndex];
+    if (opt && opt.value) {
+        document.getElementById('simCardNumber').value = opt.value;
+        document.getElementById('simExpMonth').value = opt.dataset.month || '';
+        document.getElementById('simExpYear').value = opt.dataset.year || '';
+        document.getElementById('simCvv').value = opt.dataset.cvv || '';
+    }
+}
+
+function setMerchant(name) {
+    document.getElementById('simMerchant').value = name;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Withdraw Money{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card sb-card border-0 my-3">
+            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-danger-subtle text-danger p-2">
+                    <i class="bi bi-arrow-up-circle-fill fs-3"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0 fw-bold text-dark">Withdraw Funds</h4>
+                    <p class="text-muted small mb-0">Withdraw money securely from your available bank balance</p>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('transactions.withdraw') }}">
+                    <!-- Source Account Selection -->
+                    <div class="mb-3">
+                        <label for="account_id" class="form-label">Select Source Account <span class="text-danger">*</span></label>
+                        <select class="form-select" id="account_id" name="account_id" required>
+                            {% for acc in accounts %}
+                                <option value="{{ acc.id }}" {% if selected_account and selected_account.id == acc.id %}selected{% endif %}>
+                                    {{ acc.account_type }} - {{ acc.account_number }} (Available: {{ acc.balance|currency }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Withdrawal Amount -->
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Withdrawal Amount (₹) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" step="0.01" min="1" class="form-control form-control-lg" id="amount" name="amount" placeholder="0.00" required data-preview="withdrawLivePreview" autofocus>
+                        </div>
+                        <div class="form-text small text-danger mt-1 d-none">
+                            Withdrawal Amount: <strong id="withdrawLivePreview">₹0.00</strong>
+                        </div>
+                        <div class="form-text text-muted small">Cannot exceed currently available balance.</div>
+                    </div>
+
+                    <!-- Description / Remark -->
+                    <div class="mb-4">
+                        <label for="description" class="form-label">Withdrawal Purpose / Note (Optional)</label>
+                        <input type="text" class="form-control" id="description" name="description" placeholder="e.g. Cash ATM, Emergency expense, Household bill">
+                    </div>
+
+                    <!-- Safety Note -->
+                    <div class="alert alert-warning py-2 px-3 small d-flex align-items-center mb-4">
+                        <i class="bi bi-shield-exclamation me-2 fs-5 text-warning"></i>
+                        <div>Maintaining at least ₹1,000.00 is recommended to avoid low balance notifications.</div>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between pt-2">
+                        <a href="{{ url_for('customer.dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Dashboard
+                        </a>
+                        <button type="submit" class="btn btn-danger px-4 py-2">
+                            <i class="bi bi-dash-circle me-1"></i> Confirm Withdrawal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

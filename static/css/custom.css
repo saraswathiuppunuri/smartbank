@@ -1,0 +1,423 @@
+/* ==========================================================================
+   SmartBank Professional Banking Stylesheet
+   Modern, secure, and clean fintech aesthetic
+   ========================================================================== */
+
+:root {
+  --sb-primary: #0f2a4a;
+  --sb-primary-light: #1e3a8a;
+  --sb-accent: #2563eb;
+  --sb-secondary: #475569;
+  --sb-success: #059669;
+  --sb-danger: #dc2626;
+  --sb-warning: #d97706;
+  --sb-info: #0284c7;
+  --sb-bg: #f8fafc;
+  --sb-surface: #ffffff;
+  --sb-border: #e2e8f0;
+  --sb-text-main: #0f172a;
+  --sb-text-muted: #64748b;
+  --sb-card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --sb-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --sb-radius: 0.75rem;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--sb-bg);
+  color: var(--sb-text-main);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Navbar */
+.sb-navbar {
+  background-color: var(--sb-primary);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 0.75rem 0;
+}
+
+.sb-navbar .navbar-brand {
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: -0.5px;
+  color: #ffffff !important;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sb-navbar .nav-link {
+  color: #cbd5e1 !important;
+  font-weight: 500;
+  padding: 0.5rem 0.85rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.sb-navbar .nav-link:hover,
+.sb-navbar .nav-link.active {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sb-badge-notif {
+  font-size: 0.65rem;
+  transform: translate(-40%, -40%);
+}
+
+/* Main Layout */
+.main-wrapper {
+  flex: 1;
+  padding: 1.75rem 0 3rem 0;
+}
+
+/* Cards */
+.sb-card {
+  background: var(--sb-surface);
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius);
+  box-shadow: var(--sb-card-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+}
+
+.sb-card:hover {
+  box-shadow: var(--sb-hover-shadow);
+}
+
+.sb-card-header {
+  background: #ffffff;
+  border-bottom: 1px solid var(--sb-border);
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Metric / Stat Cards */
+.metric-card {
+  border-radius: var(--sb-radius);
+  border: 1px solid var(--sb-border);
+  padding: 1.25rem;
+  background: #ffffff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--sb-card-shadow);
+  transition: transform 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sb-hover-shadow);
+}
+
+.metric-card .metric-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.metric-card.balance-gradient {
+  background: linear-gradient(135deg, #0f2a4a 0%, #1e3a8a 100%);
+  color: #ffffff;
+  border: none;
+}
+
+.metric-card.balance-gradient .metric-icon {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+/* Quick Action Tiles */
+.action-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.25rem 0.75rem;
+  background: #ffffff;
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius);
+  color: var(--sb-text-main);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.action-tile:hover {
+  background: #f1f5f9;
+  border-color: var(--sb-accent);
+  color: var(--sb-accent);
+  transform: translateY(-3px);
+  box-shadow: var(--sb-hover-shadow);
+}
+
+.action-tile .action-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  margin-bottom: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+/* Tables */
+.sb-table {
+  width: 100%;
+  margin-bottom: 0;
+  vertical-align: middle;
+}
+
+.sb-table th {
+  background-color: #f8fafc;
+  color: var(--sb-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--sb-border);
+  padding: 0.85rem 1rem;
+}
+
+.sb-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: var(--sb-text-main);
+  font-size: 0.92rem;
+}
+
+.sb-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+/* Account Number Mask & Copy */
+.account-badge {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Forms */
+.form-label {
+  font-weight: 500;
+  font-size: 0.88rem;
+  color: var(--sb-secondary);
+  margin-bottom: 0.35rem;
+}
+
+.form-control, .form-select {
+  border-radius: 0.5rem;
+  border: 1px solid var(--sb-border);
+  padding: 0.65rem 0.9rem;
+  font-size: 0.95rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--sb-accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.input-group-text {
+  background-color: #f8fafc;
+  border-color: var(--sb-border);
+  color: var(--sb-secondary);
+  font-weight: 600;
+}
+
+/* Buttons */
+.btn-primary {
+  background-color: var(--sb-accent);
+  border-color: var(--sb-accent);
+  font-weight: 500;
+  border-radius: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+}
+
+.btn-secondary {
+  border-radius: 0.5rem;
+  font-weight: 500;
+}
+
+/* Badges */
+.badge-active {
+  background-color: #dcfce7;
+  color: #15803d;
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  border-radius: 20px;
+}
+
+.badge-inactive {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  border-radius: 20px;
+}
+
+.badge-suspended {
+  background-color: #fef3c7;
+  color: #b45309;
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  border-radius: 20px;
+}
+
+/* Auth Screens */
+.auth-container {
+  max-width: 480px;
+  margin: 3rem auto;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.auth-header .auth-logo {
+  font-size: 2.5rem;
+  color: var(--sb-primary);
+  margin-bottom: 0.5rem;
+}
+
+/* Footer */
+.sb-footer {
+  background-color: #ffffff;
+  border-top: 1px solid var(--sb-border);
+  padding: 1.25rem 0;
+  color: var(--sb-text-muted);
+  font-size: 0.85rem;
+  margin-top: auto;
+}
+
+/* ==========================================================================
+   Debit Card Visual Components
+   ========================================================================== */
+.debit-card-visual {
+  width: 100%;
+  max-width: 390px;
+  min-height: 235px;
+  border-radius: 18px;
+  padding: 1.5rem;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 0 auto;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  user-select: none;
+}
+
+.debit-card-visual:hover {
+  transform: translateY(-4px) rotateX(2deg);
+  box-shadow: 0 19px 38px rgba(0, 0, 0, 0.3), 0 15px 12px rgba(0, 0, 0, 0.22);
+}
+
+.debit-card-visual.card-visa {
+  background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.debit-card-visual.card-mastercard {
+  background: linear-gradient(135deg, #141e30 0%, #243b55 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.debit-card-visual.card-rupay {
+  background: linear-gradient(135deg, #004d40 0%, #00796b 50%, #009688 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.debit-card-visual.card-locked {
+  filter: grayscale(40%);
+  border: 2px dashed #f59e0b;
+}
+
+.debit-card-visual.card-blocked {
+  filter: grayscale(100%);
+  opacity: 0.65;
+  border: 2px dashed #ef4444;
+}
+
+/* Card Chip & Icons */
+.card-emv-chip {
+  width: 44px;
+  height: 34px;
+  background: linear-gradient(135deg, #e0a96d 0%, #c19a5b 50%, #e0a96d 100%);
+  border-radius: 6px;
+  border: 1px solid #a67c52;
+  position: relative;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,0.4);
+}
+
+.card-emv-chip::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(0,0,0,0.3);
+}
+
+.card-contactless-wave {
+  font-size: 1.3rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.card-number-display {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.card-holder-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.card-meta-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.5px;
+}
+
+.card-meta-val {
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.card-network-badge {
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+

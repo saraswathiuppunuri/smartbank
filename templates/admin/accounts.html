@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Accounts - Admin{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-7">
+        <h3 class="fw-bold text-dark mb-1"><i class="bi bi-credit-card-2-front-fill text-primary me-2"></i>Bank Accounts Registry</h3>
+        <p class="text-muted small mb-0">Monitor balances, filter by account type, and manage operational statuses.</p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Search & Filters -->
+<div class="card sb-card border-0 mb-4">
+    <div class="card-body p-3">
+        <form method="GET" action="{{ url_for('admin.accounts') }}">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" name="q" value="{{ search or '' }}" placeholder="Search by account number or customer name...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="type" onchange="this.form.submit()">
+                        <option value="ALL" {% if type_filter == 'ALL' %}selected{% endif %}>All Types</option>
+                        <option value="Savings" {% if type_filter == 'Savings' %}selected{% endif %}>Savings Accounts</option>
+                        <option value="Current" {% if type_filter == 'Current' %}selected{% endif %}>Current Accounts</option>
+                        <option value="Salary" {% if type_filter == 'Salary' %}selected{% endif %}>Salary Accounts</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" name="status" onchange="this.form.submit()">
+                        <option value="ALL" {% if status_filter == 'ALL' %}selected{% endif %}>All Statuses</option>
+                        <option value="ACTIVE" {% if status_filter == 'ACTIVE' %}selected{% endif %}>ACTIVE</option>
+                        <option value="INACTIVE" {% if status_filter == 'INACTIVE' %}selected{% endif %}>INACTIVE</option>
+                        <option value="SUSPENDED" {% if status_filter == 'SUSPENDED' %}selected{% endif %}>SUSPENDED</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-funnel me-1"></i> Filter
+                    </button>
+                </div>
+            </div>
+            {% if search or type_filter != 'ALL' or status_filter != 'ALL' %}
+                <div class="mt-2 pt-2 border-top">
+                    <a href="{{ url_for('admin.accounts') }}" class="text-danger small text-decoration-none">
+                        <i class="bi bi-x-circle me-1"></i> Reset Filters
+                    </a>
+                </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Accounts Table -->
+<div class="card sb-card border-0 mb-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table sb-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Account Number</th>
+                        <th>Customer / Owner</th>
+                        <th>Type</th>
+                        <th class="text-end">Balance</th>
+                        <th>Created Date</th>
+                        <th>Status</th>
+                        <th class="text-end">Change Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if accounts %}
+                        {% for acc in accounts %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span class="account-badge fw-bold text-dark fs-6">{{ acc.account_number }}</span>
+                                        <button type="button" class="btn btn-sm btn-link text-muted p-0 border-0" onclick="copyToClipboard('{{ acc.account_number }}', this)">
+                                            <i class="bi bi-clipboard small"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold text-dark">{{ acc.customer.full_name }}</div>
+                                    <span class="account-badge small text-muted">{{ acc.customer.customer_code }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary-subtle text-primary">{{ acc.account_type }}</span>
+                                </td>
+                                <td class="text-end fw-bold text-dark fs-6">
+                                    {{ acc.balance|currency }}
+                                </td>
+                                <td class="text-muted small">
+                                    {{ acc.created_at.strftime('%d %b %Y') }}
+                                </td>
+                                <td>
+                                    <span class="badge {% if acc.status == 'ACTIVE' %}badge-active{% elif acc.status == 'INACTIVE' %}badge-inactive{% else %}badge-suspended{% endif %}">
+                                        {{ acc.status }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <form method="POST" action="{{ url_for('admin.toggle_account_status', account_id=acc.id) }}" class="d-inline-flex gap-1 justify-content-end">
+                                        <select class="form-select form-select-sm" name="status" style="width: auto;">
+                                            <option value="ACTIVE" {% if acc.status == 'ACTIVE' %}selected{% endif %}>ACTIVE</option>
+                                            <option value="INACTIVE" {% if acc.status == 'INACTIVE' %}selected{% endif %}>INACTIVE</option>
+                                            <option value="SUSPENDED" {% if acc.status == 'SUSPENDED' %}selected{% endif %}>SUSPENDED</option>
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                            Update
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="bi bi-credit-card-2-front fs-2 d-block mb-2 text-secondary"></i>
+                                No bank accounts found matching criteria.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination Controls -->
+    {% if pagination and pagination.pages > 1 %}
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center py-3 border-top">
+            <div class="text-muted small">
+                Showing page <strong>{{ pagination.page }}</strong> of <strong>{{ pagination.pages }}</strong> (Total {{ pagination.total }} accounts)
+            </div>
+            <nav aria-label="Account pages">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('admin.accounts', page=pagination.prev_num, q=search, type=type_filter, status=status_filter) }}">Previous</a>
+                    </li>
+                    {% for p in pagination.iter_pages() %}
+                        {% if p %}
+                            <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('admin.accounts', page=p, q=search, type=type_filter, status=status_filter) }}">{{ p }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('admin.accounts', page=pagination.next_num, q=search, type=type_filter, status=status_filter) }}">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

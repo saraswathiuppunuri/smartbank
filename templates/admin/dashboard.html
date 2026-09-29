@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Banking Overview{% endblock %}
+
+{% block content %}
+<!-- Admin Header -->
+<div class="row align-items-center mb-4">
+    <div class="col-md-7">
+        <h2 class="fw-bold text-dark mb-1">
+            <i class="bi bi-shield-shaded text-primary me-2"></i>SmartBank Administration Console
+        </h2>
+        <p class="text-muted small mb-0">System-wide core banking statistics, customer accounts, and transaction audit trails.</p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <a href="{{ url_for('admin.customers') }}" class="btn btn-primary">
+            <i class="bi bi-person-plus-fill me-1"></i> Add New Customer
+        </a>
+    </div>
+</div>
+
+<!-- 8 Core Metrics Grid -->
+<div class="row g-3 mb-4">
+    <!-- Total Customers -->
+    <div class="col-xl-3 col-md-6">
+        <div class="metric-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-medium">Total Customers</span>
+                <div class="metric-icon bg-primary-subtle text-primary">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+            </div>
+            <h3 class="fw-bold text-dark mb-1">{{ total_customers }}</h3>
+            <a href="{{ url_for('admin.customers') }}" class="text-primary text-decoration-none small">
+                Manage Customers <i class="bi bi-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- Total Accounts -->
+    <div class="col-xl-3 col-md-6">
+        <div class="metric-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-medium">Total Bank Accounts</span>
+                <div class="metric-icon bg-info-subtle text-info">
+                    <i class="bi bi-credit-card-2-front-fill"></i>
+                </div>
+            </div>
+            <h3 class="fw-bold text-dark mb-1">{{ total_accounts }}</h3>
+            <span class="text-muted small">Savings, Current, Salary</span>
+        </div>
+    </div>
+
+    <!-- Active Accounts -->
+    <div class="col-xl-3 col-md-6">
+        <div class="metric-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-medium">Active Accounts</span>
+                <div class="metric-icon bg-success-subtle text-success">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+            </div>
+            <h3 class="fw-bold text-success mb-1">{{ active_accounts }}</h3>
+            <span class="badge bg-success-subtle text-success small">Operational</span>
+        </div>
+    </div>
+
+    <!-- Inactive Accounts -->
+    <div class="col-xl-3 col-md-6">
+        <div class="metric-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-medium">Inactive / Suspended</span>
+                <div class="metric-icon bg-danger-subtle text-danger">
+                    <i class="bi bi-slash-circle-fill"></i>
+                </div>
+            </div>
+            <h3 class="fw-bold text-danger mb-1">{{ inactive_accounts }}</h3>
+            <span class="badge bg-danger-subtle text-danger small">Restricted</span>
+        </div>
+    </div>
+
+    <!-- Total Deposits -->
+    <div class="col-xl-3 col-md-6">
+        <div class="metric-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-medium">Cumulative Deposits</span>
+                <div class="metric-icon bg-success-subtle text-success">
+                    <i class="bi bi-arrow-down-left-circle-fill"></i>
+                </div>
+            </div>
+            <h4 class="fw-bold text-success mb-1">{{ total_deposits|currency }}</h4>
+            <span class="text-muted small">Total liquidity deposited</span>
+        </div>
+    </div>
+
+    <!-- Total Withdrawals -->
+    <div class="col-xl-3 col-md-6">
+        <div class="metric-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-medium">Total Withdrawals</span>
+                <div class="metric-icon bg-danger-subtle text-danger">
+                    <i class="bi bi-arrow-up-right-circle-fill"></i>
+                </div>
+            </div>
+            <h4 class="fw-bold text-danger mb-1">{{ total_withdrawals|currency }}</h4>
+            <span class="text-muted small">Total cash disbursed</span>
+        </div>
+    </div>
+
+    <!-- Total Transfers -->
+    <div class="col-xl-3 col-md-6">
+        <div class="metric-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-medium">Inter-Account Transfers</span>
+                <div class="metric-icon bg-primary-subtle text-primary">
+                    <i class="bi bi-arrow-left-right"></i>
+                </div>
+            </div>
+            <h4 class="fw-bold text-primary mb-1">{{ total_transfers|currency }}</h4>
+            <span class="text-muted small">Processed fund transfers</span>
+        </div>
+    </div>
+
+    <!-- Total Transaction Count -->
+    <div class="col-xl-3 col-md-6">
+        <div class="metric-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-medium">Ledger Audit Count</span>
+                <div class="metric-icon bg-secondary-subtle text-secondary">
+                    <i class="bi bi-receipt"></i>
+                </div>
+            </div>
+            <h4 class="fw-bold text-secondary mb-1">{{ total_transactions }}</h4>
+            <a href="{{ url_for('admin.transactions') }}" class="text-secondary text-decoration-none small">
+                All Transactions <i class="bi bi-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Recent Activity Sections -->
+<div class="row g-4">
+    <!-- Recent Customers -->
+    <div class="col-lg-5">
+        <div class="card sb-card border-0 h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-semibold text-dark"><i class="bi bi-people-fill text-primary me-2"></i>Newest Customers</h5>
+                <a href="{{ url_for('admin.customers') }}" class="btn btn-sm btn-outline-primary py-0 px-2">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table sb-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th>Contact</th>
+                                <th class="text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in recent_customers %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ c.full_name }}</div>
+                                        <div class="small text-muted account-badge">{{ c.customer_code }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="small text-secondary">{{ c.user.email }}</div>
+                                        <div class="small text-muted">{{ c.phone }}</div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge {{ 'badge-active' if c.user.is_active else 'badge-inactive' }} small">
+                                            {{ 'ACTIVE' if c.user.is_active else 'INACTIVE' }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Bank Transactions -->
+    <div class="col-lg-7">
+        <div class="card sb-card border-0 h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-semibold text-dark"><i class="bi bi-journal-check text-primary me-2"></i>Live System Transactions</h5>
+                <a href="{{ url_for('admin.transactions') }}" class="btn btn-sm btn-outline-secondary py-0 px-2">Audit Ledger</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table sb-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Ref & Date</th>
+                                <th>Account</th>
+                                <th>Type</th>
+                                <th class="text-end">Amount</th>
+                                <th class="text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in recent_transactions %}
+                                <tr>
+                                    <td>
+                                        <div class="account-badge fw-semibold text-dark small">{{ t.transaction_ref }}</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">{{ t.created_at|datetime_format }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="account-badge small">{{ t.account.account_number }}</span>
+                                        <div class="text-muted small">{{ t.account.customer.full_name }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge {{ t.badge_class }} small">
+                                            {{ t.transaction_type.replace('_', ' ') }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end fw-bold {{ 'text-success' if t.is_credit else 'text-danger' }}">
+                                        {{ '+' if t.is_credit else '-' }}{{ t.amount|currency }}
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success-subtle text-success small">{{ t.status }}</span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

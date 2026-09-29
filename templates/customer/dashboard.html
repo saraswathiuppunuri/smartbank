@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Customer Dashboard{% endblock %}
+
+{% block content %}
+<!-- Welcome & Customer Overview Header -->
+<div class="row align-items-center mb-4">
+    <div class="col-md-7">
+        <h2 class="fw-bold text-dark mb-1">
+            Hello, {{ customer.full_name }}!
+        </h2>
+        <div class="d-flex flex-wrap align-items-center gap-3 text-muted small">
+            <span><i class="bi bi-person-vcard text-primary me-1"></i> Customer ID: <strong>{{ customer.customer_code }}</strong></span>
+            <span>&bull;</span>
+            <span><i class="bi bi-shield-check text-success me-1"></i> KYC: <span class="badge bg-success-subtle text-success">{{ customer.kyc_status }}</span></span>
+            <span>&bull;</span>
+            <span><i class="bi bi-envelope text-secondary me-1"></i> {{ customer.user.email }}</span>
+        </div>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <div class="btn-group">
+            <a href="{{ url_for('transactions.transfer') }}" class="btn btn-primary">
+                <i class="bi bi-arrow-left-right me-1"></i> Transfer Money
+            </a>
+            <a href="{{ url_for('transactions.deposit') }}" class="btn btn-outline-primary">
+                <i class="bi bi-plus-circle me-1"></i> Deposit
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Primary Account & Fast Stats Grid -->
+<div class="row g-3 mb-4">
+    <!-- Main Account Card -->
+    <div class="col-lg-4 col-md-6">
+        <div class="metric-card balance-gradient h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-white text-primary fw-semibold">{{ primary_acc.account_type if primary_acc else 'Savings' }} Account</span>
+                    <span class="badge bg-success-subtle text-success">{{ primary_acc.status if primary_acc else 'ACTIVE' }}</span>
+                </div>
+                <div class="text-white-50 small mb-1">Account Number</div>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="fs-5 fw-semibold account-badge">{{ primary_acc.account_number if primary_acc else 'N/A' }}</span>
+                    {% if primary_acc %}
+                        <button type="button" class="btn btn-sm btn-outline-light py-0 px-1 border-0" onclick="copyToClipboard('{{ primary_acc.account_number }}', this)" title="Copy Account Number">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <div class="text-white-50 small">Available Net Balance</div>
+                <h2 class="fw-bold text-white mb-0">{{ total_balance|currency }}</h2>
+                <div class="text-white-50 small mt-1">Across {{ accounts|length }} active account(s)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Total Deposits -->
+    <div class="col-lg-2 col-md-6 col-sm-6">
+        <div class="metric-card h-100">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-medium">Total Deposits</span>
+                <div class="metric-icon bg-success-subtle text-success">
+                    <i class="bi bi-arrow-down-left"></i>
+                </div>
+            </div>
+            <h4 class="fw-bold text-success mb-1">{{ total_deposits|currency }}</h4>
+            <span class="text-muted small"><i class="bi bi-graph-up text-success"></i> Inflow</span>
+        </div>
+    </div>
+
+    <!-- Total Withdrawals -->
+    <div class="col-lg-2 col-md-6 col-sm-6">
+        <div class="metric-card h-100">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-medium">Total Withdrawals</span>
+                <div class="metric-icon bg-danger-subtle text-danger">
+                    <i class="bi bi-arrow-up-right"></i>
+                </div>
+            </div>
+            <h4 class="fw-bold text-danger mb-1">{{ total_withdrawals|currency }}</h4>
+            <span class="text-muted small"><i class="bi bi-graph-down text-danger"></i> Outflow</span>
+        </div>
+    </div>
+
+    <!-- Total Transfers -->
+    <div class="col-lg-2 col-md-6 col-sm-6">
+        <div class="metric-card h-100">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-medium">Transfers Total</span>
+                <div class="metric-icon bg-info-subtle text-info">
+                    <i class="bi bi-arrow-left-right"></i>
+                </div>
+            </div>
+            <h4 class="fw-bold text-info mb-1">{{ total_transfers|currency }}</h4>
+            <span class="text-muted small"><i class="bi bi-shield-check text-info"></i> Peer-to-Peer</span>
+        </div>
+    </div>
+
+    <!-- Payees / Beneficiaries -->
+    <div class="col-lg-2 col-md-6 col-sm-6">
+        <div class="metric-card h-100">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="text-muted small fw-medium">Payees</span>
+                <div class="metric-icon bg-primary-subtle text-primary">
+                    <i class="bi bi-person-lines-fill"></i>
+                </div>
+            </div>
+            <h4 class="fw-bold text-primary mb-1">{{ customer.beneficiaries.count() }}</h4>
+            <a href="{{ url_for('customer.beneficiaries') }}" class="text-primary text-decoration-none small">
+                Manage Payees <i class="bi bi-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions Section -->
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card sb-card border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-semibold text-dark"><i class="bi bi-lightning-charge-fill text-warning me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body p-3">
+                <div class="row g-3">
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="{{ url_for('transactions.deposit') }}" class="action-tile">
+                            <div class="action-icon bg-success-subtle text-success">
+                                <i class="bi bi-plus-circle"></i>
+                            </div>
+                            <span class="fw-medium small">Deposit Funds</span>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="{{ url_for('transactions.withdraw') }}" class="action-tile">
+                            <div class="action-icon bg-danger-subtle text-danger">
+                                <i class="bi bi-dash-circle"></i>
+                            </div>
+                            <span class="fw-medium small">Withdraw Cash</span>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="{{ url_for('transactions.transfer') }}" class="action-tile">
+                            <div class="action-icon bg-info-subtle text-info">
+                                <i class="bi bi-send-fill"></i>
+                            </div>
+                            <span class="fw-medium small">Fund Transfer</span>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="{{ url_for('transactions.history') }}" class="action-tile">
+                            <div class="action-icon bg-secondary-subtle text-secondary">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                            <span class="fw-medium small">Account History</span>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="{{ url_for('customer.beneficiaries') }}" class="action-tile">
+                            <div class="action-icon bg-primary-subtle text-primary">
+                                <i class="bi bi-person-check-fill"></i>
+                            </div>
+                            <span class="fw-medium small">Beneficiaries</span>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="{{ url_for('cards.index') }}" class="action-tile">
+                            <div class="action-icon bg-dark-subtle text-dark">
+                                <i class="bi bi-credit-card-2-front-fill text-warning"></i>
+                            </div>
+                            <span class="fw-medium small">Debit Cards</span>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="{{ url_for('customer.profile') }}" class="action-tile">
+                            <div class="action-icon bg-warning-subtle text-warning">
+                                <i class="bi bi-gear-fill"></i>
+                            </div>
+                            <span class="fw-medium small">Profile & Security</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Accounts List & Recent Transactions -->
+<div class="row g-4">
+    <!-- Accounts Overview -->
+    <div class="col-lg-4">
+        <div class="card sb-card border-0 h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-semibold text-dark"><i class="bi bi-wallet2 text-primary me-2"></i>My Accounts</h5>
+                <a href="{{ url_for('customer.accounts') }}" class="btn btn-sm btn-outline-primary py-0 px-2">Manage</a>
+            </div>
+            <div class="card-body p-3">
+                {% if accounts %}
+                    <div class="list-group list-group-flush">
+                        {% for acc in accounts %}
+                            <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="fw-bold text-dark">{{ acc.account_type }} Account</span>
+                                        <span class="badge {{ 'badge-active' if acc.status == 'ACTIVE' else 'badge-inactive' }} small">
+                                            {{ acc.status }}
+                                        </span>
+                                    </div>
+                                    <div class="text-muted small account-badge">
+                                        {{ acc.account_number }}
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold text-primary fs-6">{{ acc.balance|currency }}</div>
+                                    <span class="text-muted small">Available</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-4 mb-0">No active accounts found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transactions Table -->
+    <div class="col-lg-8">
+        <div class="card sb-card border-0 h-100">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-semibold text-dark"><i class="bi bi-journal-text text-primary me-2"></i>Recent Activity</h5>
+                <a href="{{ url_for('transactions.history') }}" class="btn btn-sm btn-outline-secondary py-0 px-2">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table sb-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Transaction Ref</th>
+                                <th>Type</th>
+                                <th>Description / Party</th>
+                                <th>Date & Time</th>
+                                <th class="text-end">Amount</th>
+                                <th class="text-end">Balance After</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if recent_transactions %}
+                                {% for txn in recent_transactions %}
+                                    <tr>
+                                        <td>
+                                            <span class="account-badge small fw-semibold text-dark">{{ txn.transaction_ref }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge {{ txn.badge_class }} small">
+                                                {{ txn.transaction_type.replace('_', ' ') }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="text-truncate" style="max-width: 220px;" title="{{ txn.description }}">
+                                                {{ txn.description or 'Banking Transaction' }}
+                                            </div>
+                                        </td>
+                                        <td class="text-muted small">
+                                            {{ txn.created_at|datetime_format }}
+                                        </td>
+                                        <td class="text-end fw-bold {{ 'text-success' if txn.is_credit else 'text-danger' }}">
+                                            {{ '+' if txn.is_credit else '-' }}{{ txn.amount|currency }}
+                                        </td>
+                                        <td class="text-end text-muted small fw-medium">
+                                            {{ txn.balance_after|currency }}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">No recent transactions recorded.</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Deposit Money{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card sb-card border-0 my-3">
+            <div class="card-header bg-white py-3 border-bottom d-flex align-items-center gap-3">
+                <div class="rounded-circle bg-success-subtle text-success p-2">
+                    <i class="bi bi-arrow-down-circle-fill fs-3"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0 fw-bold text-dark">Deposit Funds</h4>
+                    <p class="text-muted small mb-0">Secure instant credit into your SmartBank account</p>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('transactions.deposit') }}">
+                    <!-- Target Account Selection -->
+                    <div class="mb-3">
+                        <label for="account_id" class="form-label">Select Destination Account <span class="text-danger">*</span></label>
+                        <select class="form-select" id="account_id" name="account_id" required>
+                            {% for acc in accounts %}
+                                <option value="{{ acc.id }}" {% if selected_account and selected_account.id == acc.id %}selected{% endif %}>
+                                    {{ acc.account_type }} Account - {{ acc.account_number }} (Bal: {{ acc.balance|currency }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Deposit Amount -->
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Deposit Amount (₹) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" step="0.01" min="1" max="1000000" class="form-control form-control-lg" id="amount" name="amount" placeholder="0.00" required data-preview="depositLivePreview" autofocus>
+                        </div>
+                        <div class="form-text small text-success mt-1 d-none">
+                            Deposit Amount: <strong id="depositLivePreview">₹0.00</strong>
+                        </div>
+                        <div class="form-text text-muted small">Minimum deposit: ₹1.00 | Maximum single deposit: ₹10,00,000.00</div>
+                    </div>
+
+                    <!-- Description / Remark -->
+                    <div class="mb-4">
+                        <label for="description" class="form-label">Transaction Note / Purpose (Optional)</label>
+                        <input type="text" class="form-control" id="description" name="description" placeholder="e.g. Salary, Business Revenue, Savings credit">
+                    </div>
+
+                    <!-- Information banner -->
+                    <div class="alert alert-info py-2 px-3 small d-flex align-items-center mb-4">
+                        <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+                        <div>Deposits are processed instantly and secured with full ACID transaction guarantees.</div>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between pt-2">
+                        <a href="{{ url_for('customer.dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Dashboard
+                        </a>
+                        <button type="submit" class="btn btn-success px-4 py-2">
+                            <i class="bi bi-check2-circle me-1"></i> Confirm Deposit
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
