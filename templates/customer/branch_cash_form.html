@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}Online Cash Withdrawal Slip & Branch Pre-Booking - SmartBank{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <!-- Breadcrumb & Header -->
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="{{ url_for('customer.dashboard') }}" class="text-decoration-none">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('branch_cash.index') }}" class="text-decoration-none">Branch Cash Requests</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Digital Withdrawal Slip</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h3 class="fw-bold text-dark mb-1">
+                    <i class="bi bi-bank2 text-primary me-2"></i>Branch Cash Withdrawal Pre-Booking
+                </h3>
+                <p class="text-muted small mb-0">Fill out your digital withdrawal slip online. The branch manager will pre-verify and reserve your cash at a dedicated priority counter, saving your time offline.</p>
+            </div>
+            <a href="{{ url_for('branch_cash.index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-clock-history me-1"></i> My Saved Slips
+            </a>
+        </div>
+
+        <!-- Fast-Track Highlight Alert -->
+        <div class="alert alert-primary bg-primary-subtle border-primary-subtle d-flex align-items-center p-3 mb-4 rounded-3 shadow-sm">
+            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3 flex-shrink-0" style="width: 44px; height: 44px;">
+                <i class="bi bi-lightning-charge-fill fs-5"></i>
+            </div>
+            <div class="small">
+                <strong class="d-block text-primary-emphasis fs-6">Zero-Wait Branch Counter Service</strong>
+                Submitting this slip forwards your cash order directly to the Branch Manager for virtual authorization. When you visit offline, simply show your <strong>Fast-Track Token</strong> at the assigned priority counter for instant cash collection without waiting in queues or filling paper slips!
+            </div>
+        </div>
+
+        <!-- The Official Digital Slip Container -->
+        <div class="card sb-card border-0 shadow-sm overflow-hidden mb-5">
+            <!-- Slip Header (Styled like a premium bank cheque / withdrawal voucher) -->
+            <div class="p-4 text-white position-relative" style="background: linear-gradient(135deg, #0b2545 0%, #134074 100%);">
+                <div class="row align-items-center">
+                    <div class="col-md-7">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <i class="bi bi-bank2 fs-4 text-warning"></i>
+                            <h4 class="fw-bold mb-0 tracking-tight">SMARTBANK CORE BANKING</h4>
+                        </div>
+                        <div class="text-white-50 small text-uppercase letter-spacing-sm">
+                            Official Self-Service Cash Withdrawal Slip &bull; Branch Pre-Booking Order
+                        </div>
+                    </div>
+                    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                        <span class="badge bg-warning text-dark px-3 py-2 fw-semibold fs-6">
+                            <i class="bi bi-shield-check me-1"></i> Fast-Track Token Pass
+                        </span>
+                        <div class="text-white-50 small mt-1">Valid across Hyderabad Premier Branches</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Body -->
+            <form method="POST" action="{{ url_for('branch_cash.new_slip') }}" id="cashSlipForm" class="p-4 p-md-5">
+                <input type="hidden" name="signature_data" id="signatureDataInput">
+
+                <!-- Section 1: Account & Branch Selection -->
+                <div class="mb-4">
+                    <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                        <span class="badge bg-primary rounded-circle me-2">1</span>Account & Branch Details
+                    </h5>
+
+                    <div class="row g-3">
+                        <!-- Select Account -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Select Debit Account <span class="text-danger">*</span></label>
+                            <select class="form-select" name="account_id" id="accountSelect" required onchange="updateAccountBalance(this)">
+                                {% for acc in accounts %}
+                                    <option value="{{ acc.id }}" data-balance="{{ acc.balance }}">
+                                        {{ acc.account_type }} Account — {{ acc.account_number }} (Bal: {{ acc.balance | currency }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="d-flex justify-content-between mt-1">
+                                <span class="text-muted small">Available for Withdrawal:</span>
+                                <span class="fw-bold text-success small" id="availableBalanceDisplay">
+                                    {{ accounts[0].balance | currency if accounts else '₹0.00' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Select Branch -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Select Visiting Branch <span class="text-danger">*</span></label>
+                            <select class="form-select" name="branch_code" id="branchSelect" required onchange="updateBranchDetails(this)">
+                                {% for code, b in branches.items() %}
+                                    <option value="{{ code }}" 
+                                            data-name="{{ b.name }}" 
+                                            data-ifsc="{{ b.ifsc }}" 
+                                            data-address="{{ b.address }}" 
+                                            data-phone="{{ b.phone }}"
+                                            data-manager="{{ b.manager_name }}"
+                                            {% if code == 'KPHB' %}selected{% endif %}>
+                                        {{ b.name }} ({{ code }}) — IFSC: {{ b.ifsc }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="text-muted small mt-1">
+                                <i class="bi bi-geo-alt-fill text-danger me-1"></i>Select the physical branch you will visit to collect cash.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Branch Info Card -->
+                    <div class="card bg-light border-0 mt-3 p-3 rounded-3" id="branchInfoBox">
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-4">
+                                <div class="text-muted small">Selected Branch & IFSC</div>
+                                <div class="fw-bold text-dark" id="boxBranchName">KPHB Colony Branch</div>
+                                <span class="badge bg-secondary-subtle text-secondary small account-badge" id="boxBranchIfsc">SMRT000KPHB</span>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="text-muted small">Branch Address</div>
+                                <div class="small text-dark" id="boxBranchAddress">Plot 42, Road No. 1, KPHB Phase 1, Kukatpally, Hyderabad - 500072</div>
+                            </div>
+                            <div class="col-md-3 text-md-end">
+                                <div class="text-muted small">Branch Manager</div>
+                                <div class="fw-semibold text-dark small" id="boxBranchManager">K. Ramanathan</div>
+                                <div class="text-muted small" id="boxBranchPhone"><i class="bi bi-telephone me-1"></i>+91 40 2315 8890</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Cash Amount & Denominations -->
+                <div class="mb-4">
+                    <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                        <span class="badge bg-primary rounded-circle me-2">2</span>Cash Withdrawal Amount & Currency Breakdown
+                    </h5>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Withdrawal Amount (in ₹) <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-white fw-bold text-primary">₹</span>
+                                <input type="number" step="500" min="1000" max="500000" class="form-control fw-bold fs-4 text-dark" 
+                                       name="amount" id="amountInput" placeholder="e.g. 50000" value="50000" required oninput="convertAmountToWords(this.value)">
+                            </div>
+                            <!-- Quick Amount Chips -->
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                <span class="text-muted small align-self-center me-1">Quick Select:</span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="setQuickAmount(25000)">₹25,000</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 active" onclick="setQuickAmount(50000)">₹50,000</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="setQuickAmount(100000)">₹1,00,000</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="setQuickAmount(200000)">₹2,00,000</button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Amount in Words (Rupees)</label>
+                            <div class="form-control bg-light p-3 border text-dark fw-medium small" id="amountWordsDisplay" style="min-height: 48px;">
+                                Fifty Thousand Rupees Only
+                            </div>
+                            <div class="form-text text-muted small">Auto-generated for official banking voucher verification.</div>
+                        </div>
+                    </div>
+
+                    <!-- Denomination Preferences (Optional) -->
+                    <div class="card border border-light-subtle bg-light-subtle p-3 rounded-3 mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-semibold text-dark small"><i class="bi bi-cash-stack text-success me-1"></i>Currency Note Breakdown Preference</span>
+                            <span class="badge bg-light text-muted border small">Branch Pre-Bundle</span>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white">₹500 &times;</span>
+                                    <input type="number" min="0" class="form-control text-center denom-input" id="denom500" value="100" placeholder="0" oninput="calculateDenomTotal()">
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white">₹200 &times;</span>
+                                    <input type="number" min="0" class="form-control text-center denom-input" id="denom200" value="0" placeholder="0" oninput="calculateDenomTotal()">
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white">₹100 &times;</span>
+                                    <input type="number" min="0" class="form-control text-center denom-input" id="denom100" value="0" placeholder="0" oninput="calculateDenomTotal()">
+                                </div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="denomination_preference" id="denominationPrefInput" value="₹500 x 100 notes">
+                        <div class="d-flex justify-content-between align-items-center mt-2 small text-muted">
+                            <span>Notes Total: <strong class="text-dark" id="denomTotalDisplay">₹50,000.00</strong></span>
+                            <span id="denomMatchBadge" class="badge bg-success-subtle text-success">Matches Requested Amount</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Visit Schedule & Purpose -->
+                <div class="mb-4">
+                    <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                        <span class="badge bg-primary rounded-circle me-2">3</span>Branch Visit Schedule & Purpose
+                    </h5>
+
+                    <div class="row g-3">
+                        <!-- Visit Date -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Scheduled Visit Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" name="visit_date" id="visitDateInput" 
+                                   min="{{ min_date }}" max="{{ max_date }}" value="{{ min_date }}" required>
+                            <div class="form-text small text-muted">Schedule up to 14 days in advance.</div>
+                        </div>
+
+                        <!-- Time Slot -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Preferred Time Window <span class="text-danger">*</span></label>
+                            <select class="form-select" name="time_slot" required>
+                                {% for slot in time_slots %}
+                                    <option value="{{ slot }}">{{ slot }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text small text-muted">Helps counter reserve cash bundle.</div>
+                        </div>
+
+                        <!-- Purpose -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Withdrawal Purpose <span class="text-danger">*</span></label>
+                            <select class="form-select" name="purpose" required>
+                                {% for p in purposes %}
+                                    <option value="{{ p }}" {% if loop.first %}selected{% endif %}>{{ p }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text small text-muted">Required for high-value branch auditing.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Digital Signature & Declaration -->
+                <div class="mb-4">
+                    <h5 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                        <span class="badge bg-primary rounded-circle me-2">4</span>Customer Digital Signature Verification
+                    </h5>
+
+                    <p class="text-muted small mb-2">
+                        Sign inside the box below using your mouse or touchscreen stylus. Your digital signature will be verified by the branch manager against your KYC records before granting approval.
+                    </p>
+
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <div class="border rounded-3 p-2 bg-white position-relative shadow-sm" style="border: 2px dashed #cbd5e1 !important;">
+                                <div class="d-flex justify-content-between align-items-center mb-1 px-1">
+                                    <span class="small text-muted"><i class="bi bi-pen me-1 text-primary"></i>Draw Signature Here</span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="clearSignaturePad()">
+                                        <i class="bi bi-eraser me-1"></i>Clear
+                                    </button>
+                                </div>
+                                <canvas id="signatureCanvas" width="480" height="150" style="width: 100%; height: 150px; background-color: #fafbfc; cursor: crosshair; touch-action: none; border-radius: 4px;"></canvas>
+                                <div class="text-muted small text-center mt-1" style="font-size: 0.75rem;">
+                                    Sign above: {{ customer.full_name }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-5">
+                            <div class="card bg-light border-0 p-3 h-100 d-flex flex-column justify-content-between">
+                                <div>
+                                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-shield-lock-fill text-primary me-1"></i>Security Declaration</h6>
+                                    <p class="text-muted small mb-3">
+                                        I hereby request cash withdrawal from my designated SmartBank account. I certify that this online slip was authorized by me. I agree to present my token ID and personal photo identification (Aadhaar / PAN) at the designated priority counter for verification upon cash disbursement.
+                                    </p>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="declarationCheck" required checked>
+                                    <label class="form-check-label small fw-semibold text-dark" for="declarationCheck">
+                                        I agree to the offline counter verification terms.
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button Bar -->
+                <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center pt-3 border-top">
+                    <a href="{{ url_for('branch_cash.index') }}" class="btn btn-light px-4">
+                        Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary px-5 py-2 fs-6 shadow-sm" id="submitSlipBtn">
+                        <i class="bi bi-send-check me-2"></i>Submit Digital Slip to Branch Manager
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- Indian Currency to Words Script ---
+function convertAmountToWords(amount) {
+    const val = parseInt(amount, 10);
+    const display = document.getElementById('amountWordsDisplay');
+    if (!val || val <= 0) {
+        display.textContent = 'Zero Rupees Only';
+        return;
+    }
+
+    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+        "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+        "Seventeen", "Eighteen", "Nineteen"];
+    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+    function belowThousand(n) {
+        let str = [];
+        if (n >= 100) {
+            str.push(ones[Math.floor(n / 100)] + " Hundred");
+            n %= 100;
+        }
+        if (n >= 20) {
+            str.push(tens[Math.floor(n / 10)]);
+            n %= 10;
+        }
+        if (n > 0) {
+            str.push(ones[n]);
+        }
+        return str.join(" ");
+    }
+
+    let n = val;
+    let parts = [];
+    const crores = Math.floor(n / 10000000);
+    n %= 10000000;
+    const lakhs = Math.floor(n / 100000);
+    n %= 100000;
+    const thousands = Math.floor(n / 1000);
+    n %= 1000;
+    const rem = n;
+
+    if (crores > 0) parts.push(belowThousand(crores) + " Crore");
+    if (lakhs > 0) parts.push(belowThousand(lakhs) + " Lakh");
+    if (thousands > 0) parts.push(belowThousand(thousands) + " Thousand");
+    if (rem > 0) parts.push(belowThousand(rem));
+
+    const result = parts.join(" ").trim() + " Rupees Only";
+    display.textContent = result;
+}
+
+// --- Quick Amount Button Handler ---
+function setQuickAmount(amt) {
+    const input = document.getElementById('amountInput');
+    input.value = amt;
+    convertAmountToWords(amt);
+    
+    // Auto adjust denominations for common presets
+    if (amt === 25000) {
+        document.getElementById('denom500').value = 50;
+        document.getElementById('denom200').value = 0;
+        document.getElementById('denom100').value = 0;
+    } else if (amt === 50000) {
+        document.getElementById('denom500').value = 100;
+        document.getElementById('denom200').value = 0;
+        document.getElementById('denom100').value = 0;
+    } else if (amt === 100000) {
+        document.getElementById('denom500').value = 200;
+        document.getElementById('denom200').value = 0;
+        document.getElementById('denom100').value = 0;
+    } else if (amt === 200000) {
+        document.getElementById('denom500').value = 400;
+        document.getElementById('denom200').value = 0;
+        document.getElementById('denom100').value = 0;
+    }
+    calculateDenomTotal();
+}
+
+// --- Dynamic Account Balance Display ---
+function updateAccountBalance(sel) {
+    const opt = sel.options[sel.selectedIndex];
+    const bal = parseFloat(opt.dataset.balance || 0);
+    document.getElementById('availableBalanceDisplay').textContent = '₹' + bal.toLocaleString('en-IN', {minimumFractionDigits: 2});
+}
+
+// --- Dynamic Branch Details Update ---
+function updateBranchDetails(sel) {
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt) return;
+    document.getElementById('boxBranchName').textContent = opt.dataset.name;
+    document.getElementById('boxBranchIfsc').textContent = opt.dataset.ifsc;
+    document.getElementById('boxBranchAddress').textContent = opt.dataset.address;
+    document.getElementById('boxBranchManager').textContent = opt.dataset.manager;
+    document.getElementById('boxBranchPhone').innerHTML = '<i class="bi bi-telephone me-1"></i>' + opt.dataset.phone;
+}
+
+// --- Denomination Total Calculation ---
+function calculateDenomTotal() {
+    const c500 = parseInt(document.getElementById('denom500').value || 0, 10);
+    const c200 = parseInt(document.getElementById('denom200').value || 0, 10);
+    const c100 = parseInt(document.getElementById('denom100').value || 0, 10);
+    const total = (c500 * 500) + (c200 * 200) + (c100 * 100);
+    const requested = parseFloat(document.getElementById('amountInput').value || 0);
+
+    document.getElementById('denomTotalDisplay').textContent = '₹' + total.toLocaleString('en-IN', {minimumFractionDigits: 2});
+    
+    const badge = document.getElementById('denomMatchBadge');
+    if (total === requested) {
+        badge.className = 'badge bg-success-subtle text-success';
+        badge.textContent = 'Matches Requested Amount';
+    } else {
+        badge.className = 'badge bg-warning-subtle text-warning';
+        badge.textContent = 'Custom Split (₹' + total.toLocaleString('en-IN') + ')';
+    }
+
+    let prefParts = [];
+    if (c500 > 0) prefParts.push(`₹500 x ${c500}`);
+    if (c200 > 0) prefParts.push(`₹200 x ${c200}`);
+    if (c100 > 0) prefParts.push(`₹100 x ${c100}`);
+    document.getElementById('denominationPrefInput').value = prefParts.join(', ') || 'Standard Mix';
+}
+
+// --- HTML5 Canvas Signature Pad ---
+const canvas = document.getElementById('signatureCanvas');
+const ctx = canvas.getContext('2d');
+let isDrawing = false;
+let hasSigned = false;
+
+// Set drawing styles
+ctx.strokeStyle = "#0b2545";
+ctx.lineWidth = 2.5;
+ctx.lineCap = "round";
+ctx.lineJoin = "round";
+
+function getCanvasCoordinates(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    let clientX, clientY;
+    if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
+}
+
+function startDrawing(e) {
+    isDrawing = true;
+    hasSigned = true;
+    const coords = getCanvasCoordinates(e);
+    ctx.beginPath();
+    ctx.moveTo(coords.x, coords.y);
+    e.preventDefault();
+}
+
+function draw(e) {
+    if (!isDrawing) return;
+    const coords = getCanvasCoordinates(e);
+    ctx.lineTo(coords.x, coords.y);
+    ctx.stroke();
+    e.preventDefault();
+}
+
+function stopDrawing(e) {
+    if (isDrawing) {
+        isDrawing = false;
+        ctx.closePath();
+    }
+}
+
+// Mouse events
+canvas.addEventListener('mousedown', startDrawing);
+canvas.addEventListener('mousemove', draw);
+canvas.addEventListener('mouseup', stopDrawing);
+canvas.addEventListener('mouseleave', stopDrawing);
+
+// Touch events for mobile/tablet
+canvas.addEventListener('touchstart', startDrawing);
+canvas.addEventListener('touchmove', draw);
+canvas.addEventListener('touchend', stopDrawing);
+
+function clearSignaturePad() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hasSigned = false;
+    document.getElementById('signatureDataInput').value = '';
+}
+
+// Form Submission intercept to save signature as Base64 Data URL
+document.getElementById('cashSlipForm').addEventListener('submit', function(e) {
+    if (hasSigned) {
+        document.getElementById('signatureDataInput').value = canvas.toDataURL('image/png');
+    }
+});
+</script>
+{% endblock %}

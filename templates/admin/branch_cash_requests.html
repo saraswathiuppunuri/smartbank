@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block title %}Branch Cash Requests & Digital Slips Verification - SmartBank Admin{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="row align-items-center mb-4">
+    <div class="col-md-7">
+        <h3 class="fw-bold text-dark mb-1">
+            <i class="bi bi-building-fill-check text-primary me-2"></i>Branch Cash Requests & Virtual Slips Console
+        </h3>
+        <p class="text-muted small mb-0">Pre-verify customer withdrawal slips, allocate priority counters, reserve cash currency bundles, and disburse cash offline.</p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <span class="badge bg-primary-subtle text-primary px-3 py-2 fs-6">
+            <i class="bi bi-shield-lock-fill me-1"></i> Branch Operations Desk
+        </span>
+    </div>
+</div>
+
+<!-- Metrics Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card sb-card border-0 p-3 bg-white">
+            <span class="text-muted small text-uppercase fw-semibold">Total Cash Requested</span>
+            <h3 class="fw-bold text-dark mb-0 mt-1">{{ total_requested_amount | currency }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card sb-card border-0 p-3 bg-white">
+            <span class="text-muted small text-uppercase fw-semibold">Pending Manager Reviews</span>
+            <h3 class="fw-bold text-warning mb-0 mt-1">{{ pending_count }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card sb-card border-0 p-3 bg-white">
+            <span class="text-muted small text-uppercase fw-semibold">Approved & Reserved</span>
+            <h3 class="fw-bold text-success mb-0 mt-1">{{ approved_count }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card sb-card border-0 p-3 bg-white">
+            <span class="text-muted small text-uppercase fw-semibold">Dispensed & Settled</span>
+            <h3 class="fw-bold text-primary mb-0 mt-1">{{ collected_count }}</h3>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card sb-card border-0 p-3 mb-4 bg-white">
+    <form method="GET" action="{{ url_for('branch_cash.admin_requests') }}" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold text-muted">Filter by Branch</label>
+            <select class="form-select" name="branch" onchange="this.form.submit()">
+                <option value="ALL" {% if current_branch == 'ALL' %}selected{% endif %}>All Branches (Citywide)</option>
+                {% for code, b in branches.items() %}
+                    <option value="{{ code }}" {% if current_branch == code %}selected{% endif %}>{{ b.name }} ({{ code }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small fw-semibold text-muted">Filter by Status</label>
+            <select class="form-select" name="status" onchange="this.form.submit()">
+                <option value="ALL" {% if current_status == 'ALL' %}selected{% endif %}>All Statuses</option>
+                <option value="PENDING" {% if current_status == 'PENDING' %}selected{% endif %}>PENDING (Awaiting Review)</option>
+                <option value="APPROVED" {% if current_status == 'APPROVED' %}selected{% endif %}>APPROVED (Cash Reserved)</option>
+                <option value="COLLECTED" {% if current_status == 'COLLECTED' %}selected{% endif %}>COLLECTED (Cash Dispensed)</option>
+                <option value="REJECTED" {% if current_status == 'REJECTED' %}selected{% endif %}>REJECTED</option>
+            </select>
+        </div>
+        <div class="col-md-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary flex-fill">
+                <i class="bi bi-funnel-fill me-1"></i> Apply Filter
+            </button>
+            <a href="{{ url_for('branch_cash.admin_requests') }}" class="btn btn-outline-secondary">Reset</a>
+        </div>
+    </form>
+</div>
+
+<!-- Requests Table -->
+<div class="card sb-card border-0 shadow-sm overflow-hidden mb-5">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="fw-bold text-dark mb-0"><i class="bi bi-list-check text-primary me-2"></i>Virtual Withdrawal Slips Queue</h5>
+        <span class="badge bg-light text-muted border">{{ requests | length }} Record(s)</span>
+    </div>
+
+    {% if requests %}
+        <div class="table-responsive">
+            <table class="table sb-table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Token / Date</th>
+                        <th>Customer / KYC</th>
+                        <th>Debit Account & Balance</th>
+                        <th>Visiting Branch</th>
+                        <th>Requested Cash</th>
+                        <th>Schedule</th>
+                        <th>Digital Signature</th>
+                        <th>Status</th>
+                        <th class="text-end">Manager Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in requests %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('branch_cash.view_slip', request_id=r.id) }}" class="fw-bold font-monospace text-primary text-decoration-none">
+                                    {{ r.token_number }}
+                                </a>
+                                <div class="text-muted small">{{ r.created_at.strftime('%d-%b-%Y, %I:%M %p') }}</div>
+                            </td>
+                            <td>
+                                <strong class="text-dark d-block">{{ r.customer.full_name }}</strong>
+                                <span class="badge bg-success-subtle text-success small">KYC VERIFIED</span>
+                                <div class="text-muted small">Ph: {{ r.customer.phone }}</div>
+                            </td>
+                            <td>
+                                <span class="account-badge fw-bold text-dark small">{{ r.account.account_number }}</span>
+                                <div class="small">
+                                    <span class="text-muted">Bal:</span>
+                                    <strong class="{% if r.account.balance < r.amount %}text-danger{% else %}text-success{% endif %}">
+                                        {{ r.account.balance | currency }}
+                                    </strong>
+                                </div>
+                            </td>
+                            <td>
+                                <strong class="text-dark small d-block">{{ r.branch_name }}</strong>
+                                <span class="badge bg-secondary-subtle text-secondary small account-badge">{{ r.ifsc_code }}</span>
+                            </td>
+                            <td>
+                                <h6 class="fw-bold text-primary mb-0">{{ r.amount | currency }}</h6>
+                                <div class="text-muted small">{{ r.denomination_preference or 'Standard Mix' }}</div>
+                            </td>
+                            <td>
+                                <strong class="text-dark small d-block">{{ r.visit_date.strftime('%d-%b-%Y') }}</strong>
+                                <span class="text-muted small">{{ r.time_slot }}</span>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" data-bs-toggle="modal" data-bs-target="#sigModal{{ r.id }}">
+                                    <i class="bi bi-pen me-1"></i> View Sign
+                                </button>
+
+                                <!-- Signature Modal -->
+                                <div class="modal fade" id="sigModal{{ r.id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-sm">
+                                        <div class="modal-content border-0 shadow">
+                                            <div class="modal-header bg-dark text-white py-2">
+                                                <h6 class="modal-title small mb-0"><i class="bi bi-pen me-1"></i>Customer Signature</h6>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body text-center p-3">
+                                                {% if r.signature_data and r.signature_data.startswith('data:image') %}
+                                                    <img src="{{ r.signature_data }}" alt="Signature" class="img-fluid border rounded p-2 bg-light" style="max-height: 120px;">
+                                                {% else %}
+                                                    <div class="font-monospace text-primary fw-semibold p-3 border rounded bg-light">
+                                                        {{ r.signature_data or r.customer.full_name }}
+                                                    </div>
+                                                {% endif %}
+                                                <div class="small text-muted mt-2">Signer: <strong>{{ r.customer.full_name }}</strong></div>
+                                                <div class="small text-muted">Purpose: {{ r.purpose }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge {{ r.status_badge_class }} small">
+                                    {{ r.status }}
+                                </span>
+                                {% if r.priority_counter %}
+                                    <div class="text-muted small mt-1">{{ r.priority_counter }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex flex-column align-items-end gap-1">
+                                    <a href="{{ url_for('branch_cash.view_slip', request_id=r.id) }}" class="btn btn-sm btn-outline-secondary py-0 px-2" title="Print/Inspect Slip">
+                                        <i class="bi bi-printer"></i> Slip
+                                    </a>
+
+                                    {% if r.is_pending %}
+                                        <!-- Approve Modal Trigger -->
+                                        <button type="button" class="btn btn-sm btn-success py-0 px-2" data-bs-toggle="modal" data-bs-target="#approveModal{{ r.id }}">
+                                            <i class="bi bi-check-circle me-1"></i> Approve
+                                        </button>
+                                        <!-- Reject Modal Trigger -->
+                                        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" data-bs-toggle="modal" data-bs-target="#rejectModal{{ r.id }}">
+                                            <i class="bi bi-x-circle me-1"></i> Decline
+                                        </button>
+                                    {% elif r.is_approved %}
+                                        <!-- Dispense Offline Counter Trigger -->
+                                        <form method="POST" action="{{ url_for('branch_cash.admin_dispense', request_id=r.id) }}" onsubmit="return confirm('Confirm offline cash dispense of {{ r.amount | currency }} to customer {{ r.customer.full_name }} at counter? This will debit their bank account balance.');">
+                                            <button type="submit" class="btn btn-sm btn-primary py-0 px-2 shadow-sm">
+                                                <i class="bi bi-cash-stack me-1"></i> Dispense Cash
+                                            </button>
+                                        </form>
+                                    {% elif r.is_collected %}
+                                        <span class="text-success small fw-semibold">
+                                            <i class="bi bi-check2-all me-1"></i> Cash Disbursed
+                                        </span>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Modal: Approve Slip -->
+                                <div class="modal fade text-start" id="approveModal{{ r.id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content border-0 shadow">
+                                            <div class="modal-header bg-success text-white">
+                                                <h5 class="modal-title"><i class="bi bi-check2-circle me-2"></i>Approve Withdrawal Slip & Reserve Cash</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form method="POST" action="{{ url_for('branch_cash.admin_approve', request_id=r.id) }}">
+                                                <div class="modal-body p-4">
+                                                    <p class="text-muted small">
+                                                        Approving token <strong>{{ r.token_number }}</strong> will authorize cash withdrawal of <strong>{{ r.amount | currency }}</strong> for <strong>{{ r.customer.full_name }}</strong>.
+                                                    </p>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Assign Fast-Track Servicing Counter</label>
+                                                        <select class="form-select" name="priority_counter" required>
+                                                            <option value="Counter 2 (Fast-Track Cash)" selected>Counter 2 (Fast-Track Cash)</option>
+                                                            <option value="Counter 3 (High-Value Privileged)">Counter 3 (High-Value Privileged)</option>
+                                                            <option value="Counter 1 (General Cash Desk)">Counter 1 (General Cash Desk)</option>
+                                                            <option value="Special Wealth Desk">Special Wealth Desk</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Manager Notes / Reservation Instructions</label>
+                                                        <input type="text" class="form-control" name="manager_remarks" value="Signature verified against KYC. Cash bundle reserved at counter. Fast-track token active.">
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer bg-light">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Approve & Reserve Cash</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Modal: Reject Slip -->
+                                <div class="modal fade text-start" id="rejectModal{{ r.id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content border-0 shadow">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title"><i class="bi bi-x-circle me-2"></i>Decline Withdrawal Slip</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form method="POST" action="{{ url_for('branch_cash.admin_reject', request_id=r.id) }}">
+                                                <div class="modal-body p-4">
+                                                    <p class="text-muted small">
+                                                        Enter the reason for declining cash withdrawal token <strong>{{ r.token_number }}</strong>. The customer will receive this message via in-app alert.
+                                                    </p>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Decline Reason</label>
+                                                        <select class="form-select mb-2" onchange="this.nextElementSibling.value = this.value">
+                                                            <option value="Signature mismatch against KYC records.">Signature mismatch against KYC records</option>
+                                                            <option value="Account balance insufficient or held for pending mandates.">Account balance insufficient / held</option>
+                                                            <option value="Daily branch high-value cash threshold reached for selected date.">Daily branch cash threshold reached</option>
+                                                            <option value="KYC document update required prior to cash withdrawal.">KYC document update required</option>
+                                                        </select>
+                                                        <input type="text" class="form-control" name="manager_remarks" value="Signature mismatch against KYC records." required>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer bg-light">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-danger"><i class="bi bi-slash-circle me-1"></i>Decline Slip</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="p-5 text-center text-muted">
+            <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+            <h6>No Branch Cash Withdrawal Slips Found</h6>
+            <p class="small mb-0">No customer withdrawal pre-bookings matching the selected branch/status filter.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

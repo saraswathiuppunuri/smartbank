@@ -2,8 +2,8 @@ import os
 from datetime import datetime, timezone
 from flask import Flask, render_template, redirect, url_for, session, jsonify, request
 from config import config_by_name
-from models import db, User, Customer, Account, Card, Transaction, Beneficiary, Notification
-from routes import auth_bp, customer_bp, admin_bp, transaction_bp, card_bp, api_bp
+from models import db, User, Customer, Account, Card, Transaction, Beneficiary, Notification, BranchCashRequest
+from routes import auth_bp, customer_bp, admin_bp, transaction_bp, card_bp, branch_cash_bp, api_bp
 from routes.helpers import get_current_user
 
 def create_app(config_name=None):
@@ -23,6 +23,7 @@ def create_app(config_name=None):
     app.register_blueprint(admin_bp)
     app.register_blueprint(transaction_bp)
     app.register_blueprint(card_bp)
+    app.register_blueprint(branch_cash_bp)
     app.register_blueprint(api_bp)
 
     # Root redirect

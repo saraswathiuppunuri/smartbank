@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Branch Cash Requests & Digital Slips - SmartBank{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="row align-items-center mb-4">
+    <div class="col-md-7">
+        <h3 class="fw-bold text-dark mb-1">
+            <i class="bi bi-cash-coin text-primary me-2"></i>Branch Cash Requests & Digital Slips
+        </h3>
+        <p class="text-muted small mb-0">Skip the lines at physical branches. Fill your withdrawal slip online, get prior manager approval, and collect cash instantly at priority counters.</p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <a href="{{ url_for('branch_cash.new_slip') }}" class="btn btn-primary shadow-sm px-4">
+            <i class="bi bi-plus-circle me-1"></i> Pre-Book Cash Withdrawal
+        </a>
+    </div>
+</div>
+
+<!-- Overview Metric Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card sb-card border-0 p-3 bg-white">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-primary-subtle text-primary p-3 me-3">
+                    <i class="bi bi-cash-stack fs-4"></i>
+                </div>
+                <div>
+                    <span class="text-muted small text-uppercase fw-semibold">Active Pre-Booked Cash</span>
+                    <h4 class="fw-bold text-dark mb-0">{{ total_requested | currency }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card sb-card border-0 p-3 bg-white">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-warning-subtle text-warning p-3 me-3">
+                    <i class="bi bi-hourglass-split fs-4"></i>
+                </div>
+                <div>
+                    <span class="text-muted small text-uppercase fw-semibold">Active Slips in Queue</span>
+                    <h4 class="fw-bold text-dark mb-0">{{ active_requests_count }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card sb-card border-0 p-3 bg-white">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-success-subtle text-success p-3 me-3">
+                    <i class="bi bi-geo-alt-fill fs-4"></i>
+                </div>
+                <div>
+                    <span class="text-muted small text-uppercase fw-semibold">Branches Available</span>
+                    <h4 class="fw-bold text-dark mb-0">5 Branches</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Requests Table or Empty State -->
+{% if requests %}
+    <div class="card sb-card border-0 shadow-sm overflow-hidden mb-5">
+        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-journal-text text-primary me-2"></i>Your Withdrawal Orders</h5>
+            <span class="badge bg-light text-muted border">{{ requests | length }} Total Records</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table sb-table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Fast-Track Token</th>
+                        <th>Branch & IFSC</th>
+                        <th>Account</th>
+                        <th>Scheduled Visit</th>
+                        <th>Priority Counter</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in requests %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('branch_cash.view_slip', request_id=r.id) }}" class="fw-bold font-monospace text-primary text-decoration-none">
+                                    {{ r.token_number }}
+                                </a>
+                                <div class="text-muted small">{{ r.created_at.strftime('%d-%b-%Y, %I:%M %p') }}</div>
+                            </td>
+                            <td>
+                                <strong class="text-dark d-block">{{ r.branch_name }}</strong>
+                                <span class="badge bg-secondary-subtle text-secondary small account-badge">{{ r.ifsc_code }}</span>
+                            </td>
+                            <td>
+                                <span class="account-badge fw-medium small text-dark">{{ r.account.account_number }}</span>
+                                <div class="text-muted small">{{ r.account.account_type }}</div>
+                            </td>
+                            <td>
+                                <strong class="text-dark d-block">{{ r.visit_date.strftime('%d-%b-%Y') }}</strong>
+                                <span class="text-muted small">{{ r.time_slot }}</span>
+                            </td>
+                            <td>
+                                {% if r.is_approved or r.is_collected %}
+                                    <span class="badge bg-primary text-white small">
+                                        <i class="bi bi-geo-alt-fill me-1"></i>{{ r.priority_counter or 'Counter 2' }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted small">Pending Approval</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="fw-bold text-dark fs-6">{{ r.amount | currency }}</span>
+                            </td>
+                            <td>
+                                <span class="badge {{ r.status_badge_class }} small">
+                                    {{ r.status }}
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <a href="{{ url_for('branch_cash.view_slip', request_id=r.id) }}" class="btn btn-sm btn-outline-primary me-1" title="View Digital Voucher">
+                                    <i class="bi bi-file-earmark-text me-1"></i> View Voucher
+                                </a>
+                                {% if r.is_pending %}
+                                    <form method="POST" action="{{ url_for('branch_cash.cancel_slip', request_id=r.id) }}" class="d-inline" onsubmit="return confirm('Cancel this cash withdrawal order?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancel Order">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% else %}
+    <!-- Empty State -->
+    <div class="card sb-card border-0 text-center py-5 my-4">
+        <div class="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center mx-auto mb-3" style="width: 80px; height: 80px;">
+            <i class="bi bi-cash-stack fs-1"></i>
+        </div>
+        <h4 class="fw-bold text-dark">No Branch Cash Slips Yet</h4>
+        <p class="text-muted small mb-4 mx-auto" style="max-width: 500px;">
+            Need to withdraw large cash (₹50,000 to ₹5,00,000) from a physical branch? Avoid waiting in long counter queues by filling out your digital withdrawal slip now.
+        </p>
+        <div>
+            <a href="{{ url_for('branch_cash.new_slip') }}" class="btn btn-primary px-4 py-2 shadow-sm">
+                <i class="bi bi-plus-circle me-1"></i> Pre-Book Cash Withdrawal Now
+            </a>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Branch Network Overview -->
+<div class="card sb-card border-0 p-4">
+    <h5 class="fw-bold text-dark mb-3"><i class="bi bi-buildings text-primary me-2"></i>SmartBank Premier Branch Network</h5>
+    <div class="row g-3">
+        {% for code, b in branches.items() %}
+            <div class="col-md-6 col-lg-4">
+                <div class="border rounded-3 p-3 bg-light h-100">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <strong class="text-dark">{{ b.name }}</strong>
+                        <span class="badge bg-primary-subtle text-primary small">{{ code }}</span>
+                    </div>
+                    <div class="text-muted small mb-2">{{ b.address }}</div>
+                    <div class="d-flex justify-content-between small text-muted border-top pt-2">
+                        <span><strong>IFSC:</strong> {{ b.ifsc }}</span>
+                        <span><i class="bi bi-telephone me-1"></i>{{ b.phone }}</span>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

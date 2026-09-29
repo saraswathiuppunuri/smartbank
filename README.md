@@ -5,7 +5,7 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-ORM-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org/)
 [![Bootstrap 5](https://img.shields.io/badge/Bootstrap-5.3-7952B3?style=for-the-badge&logo=bootstrap&logoColor=white)](https://getbootstrap.com/)
-[![Tests](https://img.shields.io/badge/Tests-13%2F13%20Passing-success?style=for-the-badge&logo=pytest&logoColor=white)]()
+[![Tests](https://img.shields.io/badge/Tests-15%2F15%20Passing-success?style=for-the-badge&logo=pytest&logoColor=white)]()
 
 A production-grade, full-stack **Core Banking & Bank Management Web Application** engineered with Python Flask, MySQL, Flask-SQLAlchemy, and Bootstrap 5. 
 
@@ -92,6 +92,22 @@ Designed for a **BTech CSE Capstone Portfolio, GitHub Showcase, LinkedIn Project
   - **ATM Cash Withdrawal**: Verify 4-digit PIN and dispense cash with real-time balance deductions.
   - **Atomic Updates & Alerts**: Automatically debits linked accounts, logs transactions (`CARD_PAYMENT`, `ATM_WITHDRAWAL`), and dispatches notifications.
 
+### 9. Branch Cash Withdrawal Pre-Booking & Digital Slips (Zero-Wait Service) 🏦
+* **Online Pre-Booking for Large Cash (₹1,000 to ₹5,00,000)**: Avoid physical branch queues and paper withdrawal forms by submitting a digital voucher beforehand.
+* **Premier City Branch Selection**:
+  - **KPHB Colony Branch** (IFSC: `SMRT000KPHB`)
+  - **Ameerpet Main Branch** (IFSC: `SMRT000AMRP`)
+  - **Hitech City Cyber Gateway Branch** (IFSC: `SMRT000HTEC`)
+  - **Gachibowli Financial District Branch** (IFSC: `SMRT000GCBL`)
+  - **Banjara Hills Elite Branch** (IFSC: `SMRT000BNJR`)
+* **Real-Time Currency to Words & Denomination Split**: Real-time conversion of figures to Indian currency words and custom note denomination breakdowns (₹500, ₹200, ₹100).
+* **HTML5 Canvas Digital Signature**: Draw signatures with pointer/touch support for KYC cross-verification.
+* **Fast-Track Priority Token Pass**: Generates unique vouchers (`CS-KPHB-20260929-8421`) printable with QR/barcode representations.
+* **Branch Manager Verification Console**:
+  - Review live customer balances, KYC verification, and digital signatures.
+  - Approve requests, reserve physical currency bundles, and assign priority counters (e.g. Counter 2).
+  - Simulate fast-track offline counter cash disbursement with atomic account debits and SMS/in-app receipts.
+
 ---
 
 ## 🏗 Architecture & Workflow
@@ -110,6 +126,7 @@ flowchart TD
         AdminBP["Admin Blueprint (/admin)"]
         TxnBP["Transaction Blueprint (/deposit, /withdraw, /transfer, /history)"]
         CardBP["Card Blueprint (/cards)"]
+        BranchCashBP["Branch Cash Blueprint (/branch-cash)"]
         ApiBP["REST API Blueprint (/api)"]
         Decorators["RBAC Guards (@login_required, @admin_required)"]
     end
@@ -126,9 +143,10 @@ flowchart TD
     App --> AdminBP
     App --> TxnBP
     App --> CardBP
+    App --> BranchCashBP
     App --> ApiBP
     
-    AuthBP & CustBP & AdminBP & TxnBP & CardBP & ApiBP --> Decorators
+    AuthBP & CustBP & AdminBP & TxnBP & CardBP & BranchCashBP & ApiBP --> Decorators
     Decorators --> ORM
     ORM -->|Parameterized Queries & Transactions| MySQL
 ```
@@ -162,7 +180,9 @@ erDiagram
     CUSTOMERS ||--o{ BENEFICIARIES : "saves"
     ACCOUNTS ||--o{ TRANSACTIONS : "records"
     ACCOUNTS ||--o{ CARDS : "issues"
+    ACCOUNTS ||--o{ BRANCH_CASH_REQUESTS : "pre-books"
     CARDS ||--o{ TRANSACTIONS : "authorizes"
+    BRANCH_CASH_REQUESTS ||--o| TRANSACTIONS : "settles"
 
     USERS {
         int id PK
@@ -217,12 +237,36 @@ erDiagram
         datetime created_at
     }
 
+    BRANCH_CASH_REQUESTS {
+        int id PK
+        string token_number UK "CS-XXXX-YYYYMMDD-XXXX"
+        int customer_id FK
+        int account_id FK
+        string branch_code "KPHB | AMEERPET | HITECH | GACHIBOWLI | BANJARA"
+        string branch_name
+        string ifsc_code
+        decimal amount "15,2"
+        string amount_words
+        date visit_date
+        string time_slot
+        string purpose
+        string denomination_preference
+        text signature_data
+        string status "PENDING | APPROVED | REJECTED | COLLECTED | EXPIRED"
+        string priority_counter
+        int manager_id FK "nullable"
+        string manager_remarks
+        datetime approved_at
+        datetime collected_at
+        datetime created_at
+    }
+
     TRANSACTIONS {
         int id PK
-        string transaction_ref UK "TXN... / POS... / ATM..."
+        string transaction_ref UK "TXN... / POS... / ATM... / CSH..."
         int account_id FK
         int card_id FK "nullable"
-        string transaction_type "DEPOSIT | WITHDRAWAL | TRANSFER_SENT | TRANSFER_RECEIVED | CARD_PAYMENT | ATM_WITHDRAWAL"
+        string transaction_type "DEPOSIT | WITHDRAWAL | TRANSFER_SENT | TRANSFER_RECEIVED | CARD_PAYMENT | ATM_WITHDRAWAL | BRANCH_WITHDRAWAL"
         decimal amount "15,2"
         decimal balance_after "15,2"
         string recipient_account
@@ -271,6 +315,7 @@ banking/
 │   ├── customer.py             # Customer profile & demographic model
 │   ├── account.py              # Bank account entity & 12-digit generator
 │   ├── card.py                 # Debit card entity, 16-digit generator, PIN hashing
+│   ├── branch_cash.py          # Branch cash requests & digital withdrawal slips
 │   ├── transaction.py          # Ledger audit records & reference generator
 │   ├── beneficiary.py          # Payees directory model
 │   └── notification.py         # System alerts and notifications model
@@ -282,8 +327,9 @@ banking/
 │   ├── customer.py             # Customer dashboard, profile, accounts, payees
 │   ├── admin.py                # Admin console, customer CRUD, account management
 │   ├── card.py                 # Debit card controls, PIN, limits, POS & ATM simulator
+│   ├── branch_cash.py          # Branch cash slips, digital signatures, manager verification
 │   ├── transaction.py          # Deposit, withdrawal, transfer, history routes
-│   └── api.py                  # Full RESTful JSON endpoints (including card APIs)
+│   └── api.py                  # Full RESTful JSON endpoints (cards & branch cash)
 │
 ├── templates/                  # Jinja2 HTML Templates
 │   ├── base.html               # Shared layout, navbar, footer, alert banners
@@ -295,6 +341,9 @@ banking/
 │   │   ├── profile.html        # Profile update and password change
 │   │   ├── accounts.html       # Bank accounts portfolio & new account modal
 │   │   ├── cards.html          # 3D visual cards, limit controls, and simulators
+│   │   ├── branch_cash_form.html # Digital withdrawal slip with canvas signature
+│   │   ├── branch_cash_slip.html # Official printable fast-track voucher pass
+│   │   ├── branch_cash_list.html # Customer cash requests & slips overview
 │   │   ├── deposit.html        # Funds deposit screen
 │   │   ├── withdraw.html       # Funds withdrawal screen
 │   │   ├── transfer.html       # Atomic money transfer screen
@@ -306,6 +355,7 @@ banking/
 │   │   ├── customers.html      # Customer listing, search, create modal, status toggle
 │   │   ├── customer_edit.html  # Customer edit and KYC compliance form
 │   │   ├── accounts.html       # Bank accounts registry & status toggle
+│   │   ├── branch_cash_requests.html # Manager cash slip verification console
 │   │   └── transactions.html   # Global audit ledger
 │   └── errors/
 │       ├── 400.html            # Bad Request error page
@@ -451,9 +501,15 @@ For quick testing and technical demonstration, the following pre-configured acco
 | **Visa Platinum** | `RAHUL SHARMA` | `4532 8910 2345 6789` | 12/29 | 842 | `1234` | `100182749102` | ₹50,000.00 |
 | **Mastercard Titanium** | `RAHUL SHARMA` | `5421 9876 5432 1098` | 08/30 | 319 | `4321` | `100192847193` | ₹1,00,000.00 |
 | **RuPay Platinum** | `PRIYA PATEL` | `6071 8291 0293 8475` | 05/28 | 675 | `1234` | `100173829104` | ₹25,000.00 |
-| **Visa Business** | `AMIT VERMA` | `4716 9012 3456 7890` | 11/29 | 528 | `9999` | `100164829105` | ₹75,000.00 |
+### 🏦 Pre-Seeded Demo Branch Cash Slips (Fast-Track Vouchers)
 
-> **Pro Tip**: The login page includes one-click autofill buttons for both **Customer** and **Admin** profiles. On the `/cards/` page, clicking any pre-set merchant or selecting a card automatically populates card credentials in the transaction simulator!
+| Fast-Track Token | Customer | Branch & IFSC | Cash Amount | Scheduled Visit | Priority Counter | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **`CS-KPHB-20260930-8421`** | `Rahul Sharma` | **KPHB Colony** (`SMRT000KPHB`) | ₹50,000.00 | Tomorrow (Morning) | Awaiting Approval | `PENDING` |
+| **`CS-AMEERPET-20260929-1092`** | `Priya Patel` | **Ameerpet Main** (`SMRT000AMRP`) | ₹25,000.00 | Today (Afternoon) | Counter 2 (Fast-Track Cash) | `APPROVED` |
+| **`CS-HITECH-20260927-4389`** | `Amit Verma` | **Hitech City Cyber** (`SMRT000HTEC`) | ₹60,000.00 | 2 Days Ago | Counter 2 (Executive Cash) | `COLLECTED` |
+
+> **Pro Tip**: The login page includes one-click autofill buttons for both **Customer** and **Admin** profiles. On the `/cards/` page, clicking any pre-set merchant or selecting a card automatically populates card credentials in the transaction simulator! On `/branch-cash/new`, selecting a branch dynamically updates IFSC codes, manager contacts, and address!
 
 ---
 
@@ -659,11 +715,66 @@ All API endpoints return JSON payloads standardized with `success`, `message`, a
 }
 ```
 
+#### 13. List Supported Physical Branches & IFSC
+* **Endpoint**: `GET /api/branch-cash/branches`
+* **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "message": "Branches retrieved successfully.",
+  "data": {
+    "branches": {
+      "KPHB": { "name": "KPHB Colony Branch", "ifsc": "SMRT000KPHB", "city": "Hyderabad", "counters": 4 },
+      "AMEERPET": { "name": "Ameerpet Metro Branch", "ifsc": "SMRT000AMRP", "city": "Hyderabad", "counters": 5 },
+      "HITECH": { "name": "Hitech City Cyber Branch", "ifsc": "SMRT000HTEC", "city": "Hyderabad", "counters": 6 },
+      "GACHIBOWLI": { "name": "Gachibowli Financial District", "ifsc": "SMRT000GCBL", "city": "Hyderabad", "counters": 4 },
+      "BANJARA": { "name": "Banjara Hills Premium Branch", "ifsc": "SMRT000BNJR", "city": "Hyderabad", "counters": 3 }
+    }
+  }
+}
+```
+
+#### 14. Customer Cash Withdrawal Pre-Booking Requests
+* **Endpoint**: `GET /api/branch-cash/requests`
+* **Response (200 OK)**: Returns list of customer's digital withdrawal slips with token numbers, statuses (`PENDING`, `APPROVED`, `COLLECTED`), and allocated fast-track counters.
+
+#### 15. Create Digital Cash Withdrawal Slip
+* **Endpoint**: `POST /api/branch-cash/requests`
+* **Request Body**:
+```json
+{
+  "account_number": "100123456789",
+  "branch_code": "KPHB",
+  "amount": 50000.0,
+  "visit_date": "2026-09-30",
+  "time_slot": "Morning: 10:00 AM - 12:00 PM",
+  "purpose": "Home Renovation",
+  "denomination_preference": "500x100"
+}
+```
+* **Response (201 Created)**:
+```json
+{
+  "success": true,
+  "message": "Branch cash withdrawal slip created successfully.",
+  "data": {
+    "token_number": "CS-KPHB-20260930-8421",
+    "branch": "KPHB Colony Branch",
+    "ifsc": "SMRT000KPHB",
+    "amount": 50000.0,
+    "amount_words": "Fifty Thousand Rupees Only",
+    "visit_date": "2026-09-30",
+    "time_slot": "Morning: 10:00 AM - 12:00 PM",
+    "status": "PENDING"
+  }
+}
+```
+
 ---
 
 ## 🧪 Running Automated Tests
 
-The application includes an automated test suite covering registration, authentication, authorization, deposit limits, overdraft protection, atomic fund transfers, self-transfer prevention, customer deactivation, RESTful API endpoints, debit card issuance, payment simulation, and ATM cash withdrawal.
+The application includes an automated test suite covering registration, authentication, authorization, deposit limits, overdraft protection, atomic fund transfers, self-transfer prevention, customer deactivation, RESTful API endpoints, debit card issuance, payment simulation, ATM cash withdrawal, branch cash pre-booking digital slip lifecycle, and manager verification.
 
 To run tests:
 ```bash
@@ -676,6 +787,8 @@ test_admin_customer_deactivation ... ok
 test_api_deposit_and_transfer ... ok
 test_atm_card_withdrawal_simulation ... ok
 test_beneficiary_lifecycle ... ok
+test_branch_cash_rejection_and_guards ... ok
+test_branch_cash_withdrawal_slip_lifecycle ... ok
 test_customer_registration ... ok
 test_debit_card_issuance_and_management ... ok
 test_debit_card_payment_simulation ... ok
@@ -687,7 +800,7 @@ test_role_authorization_protection ... ok
 test_withdrawal_operations ... ok
 
 ----------------------------------------------------------------------
-Ran 13 tests in 9.381s
+Ran 15 tests in 15.866s
 
 OK
 ```

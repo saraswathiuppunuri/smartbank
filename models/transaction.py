@@ -36,7 +36,7 @@ class Transaction(db.Model):
 
     @property
     def is_debit(self):
-        return self.transaction_type in ('WITHDRAWAL', 'TRANSFER_SENT', 'CARD_PAYMENT', 'ATM_WITHDRAWAL')
+        return self.transaction_type in ('WITHDRAWAL', 'TRANSFER_SENT', 'CARD_PAYMENT', 'ATM_WITHDRAWAL', 'BRANCH_WITHDRAWAL')
 
     @property
     def badge_class(self):
@@ -46,7 +46,8 @@ class Transaction(db.Model):
             'WITHDRAWAL': 'bg-danger',
             'TRANSFER_SENT': 'bg-warning text-dark',
             'CARD_PAYMENT': 'bg-dark text-white',
-            'ATM_WITHDRAWAL': 'bg-danger text-white'
+            'ATM_WITHDRAWAL': 'bg-danger text-white',
+            'BRANCH_WITHDRAWAL': 'bg-info text-dark'
         }
         return mapping.get(self.transaction_type, 'bg-secondary')
 

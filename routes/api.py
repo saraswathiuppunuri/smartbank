@@ -1,7 +1,8 @@
 import re
 from decimal import Decimal
 from flask import Blueprint, request, jsonify, session
-from models import db, User, Customer, Account, Card, Transaction, Beneficiary, Notification
+from datetime import date, timedelta, datetime
+from models import db, User, Customer, Account, Card, Transaction, Beneficiary, Notification, BranchCashRequest
 from routes.helpers import get_current_user, login_required, admin_required, notify_user
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
@@ -790,4 +791,117 @@ def api_card_pay():
     except Exception as e:
         db.session.rollback()
         return api_response(False, f"Transaction failed: {str(e)}", status_code=500)
+
+
+# ====================================================================
+# Branch Cash Withdrawal Slips & Pre-Booking API Endpoints
+# ====================================================================
+
+@api_bp.route('/branch-cash/branches', methods=['GET'])
+def api_get_branches():
+    """Retrieve list of all active SmartBank physical branches."""
+    return api_response(True, "Branches retrieved successfully.", {
+        'branches': BranchCashRequest.BRANCHES
+    })
+
+
+@api_bp.route('/branch-cash/requests', methods=['GET'])
+@login_required
+def api_get_cash_requests():
+    """Retrieve all branch cash requests for the authenticated customer."""
+    user = get_current_user()
+    if user.is_admin:
+        requests = BranchCashRequest.query.order_by(BranchCashRequest.created_at.desc()).all()
+    else:
+        customer = user.customer
+        if not customer:
+            return api_response(False, "Customer profile not found.", status_code=404)
+        requests = BranchCashRequest.query.filter_by(customer_id=customer.id).order_by(BranchCashRequest.created_at.desc()).all()
+
+    return api_response(True, "Branch cash requests retrieved.", {
+        'requests': [r.to_dict() for r in requests]
+    })
+
+
+@api_bp.route('/branch-cash/requests', methods=['POST'])
+@login_required
+def api_create_cash_request():
+    """Create a new digital branch cash withdrawal slip."""
+    user = get_current_user()
+    customer = user.customer
+    if not customer:
+        return api_response(False, "Customer profile required.", status_code=403)
+
+    data = request.get_json(silent=True) or request.form
+    account_number = data.get('account_number', '').strip()
+    branch_code = data.get('branch_code', '').strip().upper()
+    amount_val = data.get('amount')
+    visit_date_str = data.get('visit_date', '').strip()
+    time_slot = data.get('time_slot', 'Morning: 10:00 AM - 12:00 PM').strip()
+    purpose = data.get('purpose', 'Personal Savings Withdrawal').strip()
+    denomination = data.get('denomination_preference', 'Standard Mix').strip()
+
+    account = Account.query.filter_by(account_number=account_number, customer_id=customer.id, status='ACTIVE').first()
+    if not account:
+        return api_response(False, "Invalid or inactive account specified.", status_code=400)
+
+    if branch_code not in BranchCashRequest.BRANCHES:
+        return api_response(False, f"Invalid branch code '{branch_code}'.", status_code=400)
+
+    branch_info = BranchCashRequest.BRANCHES[branch_code]
+
+    try:
+        amount = Decimal(str(amount_val))
+        if amount < Decimal('1000.00'):
+            return api_response(False, "Minimum cash pre-booking amount is ₹1,000.00.", status_code=400)
+        if amount > Decimal('500000.00'):
+            return api_response(False, "Maximum cash pre-booking amount is ₹5,00,000.00.", status_code=400)
+        if amount > account.balance:
+            return api_response(False, "Insufficient account balance.", status_code=400)
+    except Exception:
+        return api_response(False, "Invalid amount value.", status_code=400)
+
+    try:
+        visit_date = datetime.strptime(visit_date_str, '%Y-%m-%d').date()
+    except Exception:
+        visit_date = date.today() + timedelta(days=1)
+
+    try:
+        token = BranchCashRequest.generate_token(branch_code)
+        amount_words = BranchCashRequest.amount_to_words(amount)
+
+        bcr = BranchCashRequest(
+            token_number=token,
+            customer_id=customer.id,
+            account_id=account.id,
+            branch_code=branch_code,
+            branch_name=branch_info['name'],
+            ifsc_code=branch_info['ifsc'],
+            amount=amount,
+            amount_words=amount_words,
+            visit_date=visit_date,
+            time_slot=time_slot,
+            purpose=purpose,
+            denomination_preference=denomination,
+            signature_data=f"API DIGITAL ACKNOWLEDGMENT BY {customer.full_name.upper()}",
+            status='PENDING'
+        )
+        db.session.add(bcr)
+        db.session.commit()
+
+        return api_response(True, "Branch cash withdrawal slip created successfully.", {
+            'token_number': token,
+            'branch': branch_info['name'],
+            'ifsc': branch_info['ifsc'],
+            'amount': float(amount),
+            'amount_words': amount_words,
+            'visit_date': visit_date.strftime('%Y-%m-%d'),
+            'time_slot': time_slot,
+            'status': 'PENDING'
+        }, status_code=201)
+
+    except Exception as e:
+        db.session.rollback()
+        return api_response(False, f"Failed to create request: {str(e)}", status_code=500)
+
 

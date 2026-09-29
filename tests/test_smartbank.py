@@ -1,8 +1,9 @@
 import unittest
 import json
 from decimal import Decimal
+from datetime import date, timedelta
 from app import create_app
-from models import db, User, Customer, Account, Transaction, Beneficiary, Notification, Card
+from models import db, User, Customer, Account, Transaction, Beneficiary, Notification, Card, BranchCashRequest
 
 class SmartBankTestCase(unittest.TestCase):
     """Automated test suite verifying core banking functionality."""
@@ -515,6 +516,107 @@ class SmartBankTestCase(unittest.TestCase):
         atm_txn = Transaction.query.filter_by(transaction_type='ATM_WITHDRAWAL', account_id=acc.id).first()
         self.assertIsNotNone(atm_txn)
         self.assertEqual(float(atm_txn.amount), 1000.00)
+
+    # --- Test 14: Branch Cash Withdrawal Slip Lifecycle ---
+    def test_branch_cash_withdrawal_slip_lifecycle(self):
+        """Verify customer submits digital slip, manager approves with counter, and offline cash dispense debits balance."""
+        # 1. Customer Alice submits cash slip
+        self.login('alice', 'Alice@123')
+        acc = Account.query.filter_by(account_number='100111111111').first()
+
+        visit_dt = (date.today() + timedelta(days=2)).strftime('%Y-%m-%d')
+        res_submit = self.client.post('/branch-cash/new', data={
+            'account_id': acc.id,
+            'branch_code': 'KPHB',
+            'amount': '2500.00',
+            'visit_date': visit_dt,
+            'time_slot': 'Morning: 10:00 AM - 12:00 PM',
+            'purpose': 'Real Estate / Property Advance',
+            'denomination_preference': '₹500 x 5 notes',
+            'signature_data': 'DIGITALLY SIGNED BY ALICE'
+        }, follow_redirects=True)
+        self.assertEqual(res_submit.status_code, 200)
+        self.assertIn(b'Digital Withdrawal Slip submitted successfully', res_submit.data)
+
+        req = BranchCashRequest.query.filter_by(account_id=acc.id).first()
+        self.assertIsNotNone(req)
+        self.assertEqual(req.status, 'PENDING')
+        self.assertEqual(req.branch_code, 'KPHB')
+        self.assertEqual(req.ifsc_code, 'SMRT000KPHB')
+        self.assertTrue(req.token_number.startswith('CS-KPHB-'))
+
+        # Verify slip view
+        res_slip = self.client.get(f'/branch-cash/slip/{req.id}')
+        self.assertEqual(res_slip.status_code, 200)
+        self.assertIn(req.token_number.encode(), res_slip.data)
+
+        # 2. Manager logs in and approves slip
+        self.logout()
+        self.login('admin', 'Admin@1234')
+
+        res_approve = self.client.post(f'/branch-cash/admin/{req.id}/approve', data={
+            'priority_counter': 'Counter 2 (Fast-Track Cash)',
+            'manager_remarks': 'Pre-approved. Currency reserved.'
+        }, follow_redirects=True)
+        self.assertEqual(res_approve.status_code, 200)
+        db.session.refresh(req)
+        self.assertEqual(req.status, 'APPROVED')
+        self.assertEqual(req.priority_counter, 'Counter 2 (Fast-Track Cash)')
+
+        # 3. Simulate customer visiting branch offline & teller dispensing cash
+        res_dispense = self.client.post(f'/branch-cash/admin/{req.id}/dispense', follow_redirects=True)
+        self.assertEqual(res_dispense.status_code, 200)
+        self.assertIn(b'DISPENSED SUCCESSFULLY', res_dispense.data)
+
+        # Balance check: 5000 - 2500 = 2500
+        db.session.refresh(acc)
+        self.assertEqual(float(acc.balance), 2500.00)
+
+        db.session.refresh(req)
+        self.assertEqual(req.status, 'COLLECTED')
+        self.assertIsNotNone(req.transaction_id)
+
+    # --- Test 15: Branch Cash Request Validation & Rejection Guards ---
+    def test_branch_cash_rejection_and_guards(self):
+        """Verify amount exceeding balance is declined and manager can reject with remarks."""
+        self.login('alice', 'Alice@123')
+        acc = Account.query.filter_by(account_number='100111111111').first()
+
+        # 1. Attempt to request amount exceeding balance (balance is 5000)
+        res_excess = self.client.post('/branch-cash/new', data={
+            'account_id': acc.id,
+            'branch_code': 'AMEERPET',
+            'amount': '99999.00',
+            'visit_date': (date.today() + timedelta(days=1)).strftime('%Y-%m-%d'),
+            'time_slot': 'Morning: 10:00 AM - 12:00 PM',
+            'purpose': 'Personal'
+        }, follow_redirects=True)
+        self.assertIn(b'Insufficient funds', res_excess.data)
+
+        # 2. Submit valid request
+        self.client.post('/branch-cash/new', data={
+            'account_id': acc.id,
+            'branch_code': 'HITECH',
+            'amount': '1500.00',
+            'visit_date': (date.today() + timedelta(days=1)).strftime('%Y-%m-%d'),
+            'time_slot': 'Afternoon: 12:00 PM - 02:00 PM',
+            'purpose': 'Personal'
+        }, follow_redirects=True)
+
+        req = BranchCashRequest.query.filter_by(branch_code='HITECH').first()
+        self.assertIsNotNone(req)
+
+        # 3. Manager declines request with remarks
+        self.logout()
+        self.login('admin', 'Admin@1234')
+        res_reject = self.client.post(f'/branch-cash/admin/{req.id}/reject', data={
+            'manager_remarks': 'Signature mismatch against KYC records.'
+        }, follow_redirects=True)
+        self.assertEqual(res_reject.status_code, 200)
+
+        db.session.refresh(req)
+        self.assertEqual(req.status, 'REJECTED')
+        self.assertEqual(req.manager_remarks, 'Signature mismatch against KYC records.')
 
 if __name__ == '__main__':
     unittest.main()

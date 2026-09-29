@@ -3,6 +3,7 @@ from routes.customer import customer_bp
 from routes.admin import admin_bp
 from routes.transaction import transaction_bp
 from routes.card import card_bp
+from routes.branch_cash import branch_cash_bp
 from routes.api import api_bp
 
 __all__ = [
@@ -11,5 +12,6 @@ __all__ = [
     'admin_bp',
     'transaction_bp',
     'card_bp',
+    'branch_cash_bp',
     'api_bp'
 ]

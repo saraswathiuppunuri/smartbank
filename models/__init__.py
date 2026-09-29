@@ -9,6 +9,7 @@ from models.card import Card
 from models.transaction import Transaction
 from models.beneficiary import Beneficiary
 from models.notification import Notification
+from models.branch_cash import BranchCashRequest
 
 __all__ = [
     'db',
@@ -18,5 +19,6 @@ __all__ = [
     'Card',
     'Transaction',
     'Beneficiary',
-    'Notification'
+    'Notification',
+    'BranchCashRequest'
 ]

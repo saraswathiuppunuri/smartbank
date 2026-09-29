@@ -151,3 +151,40 @@ CREATE TABLE `notifications` (
     INDEX `idx_notifications_read` (`is_read`),
     INDEX `idx_notifications_date` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 8. Branch Cash Requests Table (Digital Cash Withdrawal Slip / Pre-Booking)
+CREATE TABLE `branch_cash_requests` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `token_number` VARCHAR(35) NOT NULL UNIQUE,
+    `customer_id` INT NOT NULL,
+    `account_id` INT NOT NULL,
+    `branch_code` VARCHAR(20) NOT NULL,
+    `branch_name` VARCHAR(100) NOT NULL,
+    `ifsc_code` VARCHAR(20) NOT NULL,
+    `amount` DECIMAL(15, 2) NOT NULL,
+    `amount_words` VARCHAR(255) NULL,
+    `visit_date` DATE NOT NULL,
+    `time_slot` VARCHAR(50) NOT NULL,
+    `purpose` VARCHAR(150) NOT NULL,
+    `denomination_preference` VARCHAR(255) NULL,
+    `signature_data` MEDIUMTEXT NULL,
+    `status` ENUM('PENDING', 'APPROVED', 'REJECTED', 'COLLECTED', 'EXPIRED') NOT NULL DEFAULT 'PENDING',
+    `priority_counter` VARCHAR(50) NULL,
+    `manager_id` INT NULL,
+    `manager_remarks` VARCHAR(255) NULL,
+    `approved_at` DATETIME NULL,
+    `collected_at` DATETIME NULL,
+    `transaction_id` INT NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT `fk_bcr_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_bcr_account` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_bcr_manager` FOREIGN KEY (`manager_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_bcr_transaction` FOREIGN KEY (`transaction_id`) REFERENCES `transactions` (`id`) ON DELETE SET NULL,
+    INDEX `idx_bcr_customer` (`customer_id`),
+    INDEX `idx_bcr_account` (`account_id`),
+    INDEX `idx_bcr_token` (`token_number`),
+    INDEX `idx_bcr_branch` (`branch_code`),
+    INDEX `idx_bcr_status` (`status`),
+    INDEX `idx_bcr_visit_date` (`visit_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

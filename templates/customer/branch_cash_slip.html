@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Withdrawal Slip #{{ req.token_number }} - SmartBank{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <!-- Top Action Bar -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 d-print-none">
+            <a href="{{ url_for('branch_cash.index') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Back to All Requests
+            </a>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+                    <i class="bi bi-printer-fill me-1"></i> Print / Save Voucher
+                </button>
+                {% if req.is_pending and not is_admin %}
+                    <form method="POST" action="{{ url_for('branch_cash.cancel_slip', request_id=req.id) }}" onsubmit="return confirm('Are you sure you want to cancel this cash pre-booking?');">
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bi bi-x-circle me-1"></i> Cancel Slip
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Official Bank Slip Document Container -->
+        <div class="card sb-card border-0 shadow overflow-hidden mb-4" id="printableVoucher">
+            <!-- Voucher Header -->
+            <div class="p-4 text-white border-bottom" style="background: linear-gradient(135deg, #0b2545 0%, #1e3a8a 100%);">
+                <div class="row align-items-center">
+                    <div class="col-8">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <i class="bi bi-bank2 fs-3 text-warning"></i>
+                            <h3 class="fw-bold mb-0 tracking-tight">SMARTBANK</h3>
+                        </div>
+                        <div class="small text-white-50 text-uppercase letter-spacing-sm">
+                            Core Banking Cash Department &bull; Digital Withdrawal Slip & Priority Pass
+                        </div>
+                    </div>
+                    <div class="col-4 text-end">
+                        <span class="badge {{ req.status_badge_class }} fs-6 px-3 py-2 text-uppercase">
+                            {{ req.status }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Token Barcode Banner -->
+            <div class="bg-light p-3 border-bottom d-flex flex-wrap justify-content-between align-items-center">
+                <div>
+                    <span class="text-muted small d-block">OFFICIAL FAST-TRACK TOKEN NUMBER</span>
+                    <span class="fs-4 fw-bold font-monospace text-primary tracking-wider">{{ req.token_number }}</span>
+                </div>
+                <div class="text-md-end mt-2 mt-md-0">
+                    <span class="text-muted small d-block">PRIORITY SERVICING COUNTER</span>
+                    <span class="badge bg-primary text-white fs-6">
+                        <i class="bi bi-geo-alt-fill me-1"></i>{{ req.priority_counter or 'Counter 2 (Fast-Track Cash)' }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Voucher Content -->
+            <div class="p-4 p-md-5">
+                <!-- Metadata Grid -->
+                <div class="row g-4 mb-4 pb-4 border-bottom">
+                    <!-- Branch Details -->
+                    <div class="col-md-6 border-end-md">
+                        <h6 class="fw-bold text-uppercase text-muted small mb-2">
+                            <i class="bi bi-building text-primary me-1"></i>Designated Bank Branch
+                        </h6>
+                        <h5 class="fw-bold text-dark mb-1">{{ req.branch_name }}</h5>
+                        <div class="small text-muted mb-1">{{ branch.address }}</div>
+                        <div class="d-flex gap-3 small">
+                            <span><strong>IFSC:</strong> <span class="account-badge text-primary">{{ req.ifsc_code }}</span></span>
+                            <span><strong>Phone:</strong> {{ branch.phone }}</span>
+                        </div>
+                        <div class="small text-muted mt-1">Branch Manager: <strong>{{ branch.manager_name }}</strong></div>
+                    </div>
+
+                    <!-- Customer & Account Details -->
+                    <div class="col-md-6 ps-md-4">
+                        <h6 class="fw-bold text-uppercase text-muted small mb-2">
+                            <i class="bi bi-person-badge text-primary me-1"></i>Customer Account Information
+                        </h6>
+                        <h5 class="fw-bold text-dark mb-1">{{ req.customer.full_name }}</h5>
+                        <div class="small text-muted mb-1">
+                            Customer ID: <strong class="text-dark">{{ req.customer.customer_code }}</strong> &bull; Phone: {{ req.customer.phone }}
+                        </div>
+                        <div class="d-flex gap-3 small">
+                            <span><strong>Debit Account:</strong> <span class="account-badge text-dark">{{ req.account.account_number }}</span></span>
+                            <span><strong>Account Type:</strong> {{ req.account.account_type }}</span>
+                        </div>
+                        <div class="small text-muted mt-1">KYC Status: <span class="badge bg-success-subtle text-success">VERIFIED</span></div>
+                    </div>
+                </div>
+
+                <!-- Financial Particulars -->
+                <div class="card bg-light border-0 p-4 mb-4 rounded-3">
+                    <div class="row align-items-center g-3">
+                        <div class="col-md-5">
+                            <span class="text-muted small d-block">WITHDRAWAL CASH AMOUNT</span>
+                            <h2 class="fw-bold text-primary mb-0">{{ req.amount | currency }}</h2>
+                        </div>
+                        <div class="col-md-7 border-start-md ps-md-4">
+                            <span class="text-muted small d-block">AMOUNT IN WORDS</span>
+                            <div class="fw-bold text-dark fs-6">{{ req.amount_words or 'Rupees Only' }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule & Breakdown Specs -->
+                <div class="row g-3 mb-4 pb-4 border-bottom small">
+                    <div class="col-sm-6 col-md-3">
+                        <span class="text-muted d-block">Visit Date</span>
+                        <strong class="text-dark fs-6">{{ req.visit_date.strftime('%d-%b-%Y') }}</strong>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        <span class="text-muted d-block">Time Slot</span>
+                        <strong class="text-dark">{{ req.time_slot }}</strong>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        <span class="text-muted d-block">Denomination Preference</span>
+                        <strong class="text-dark">{{ req.denomination_preference or 'Standard Cash Mix' }}</strong>
+                    </div>
+                    <div class="col-sm-6 col-md-3">
+                        <span class="text-muted d-block">Withdrawal Purpose</span>
+                        <strong class="text-dark">{{ req.purpose }}</strong>
+                    </div>
+                </div>
+
+                <!-- Signatures & Official Approvals -->
+                <div class="row g-4 align-items-end pt-2 mb-4">
+                    <!-- Customer Digital Signature -->
+                    <div class="col-md-6 text-center border-end-md">
+                        <div class="text-muted small mb-2 text-uppercase fw-semibold">Customer Digital Signature</div>
+                        <div class="border rounded-2 p-2 bg-white d-flex align-items-center justify-content-center mx-auto" style="height: 110px; max-width: 320px;">
+                            {% if req.signature_data and req.signature_data.startswith('data:image') %}
+                                <img src="{{ req.signature_data }}" alt="Customer Signature" style="max-height: 95px; max-width: 100%; object-fit: contain;">
+                            {% else %}
+                                <div class="font-monospace text-primary fw-semibold small px-2">
+                                    {{ req.signature_data or req.customer.full_name }}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="text-muted small mt-2">
+                            Signed by: <strong>{{ req.customer.full_name }}</strong><br>
+                            <span class="text-muted" style="font-size: 0.75rem;">Submitted: {{ req.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Manager Approval & Branch Seal -->
+                    <div class="col-md-6 text-center ps-md-4">
+                        <div class="text-muted small mb-2 text-uppercase fw-semibold">Branch Manager Approval & Seal</div>
+                        <div class="border rounded-2 p-2 bg-white d-flex flex-column align-items-center justify-content-center mx-auto" style="height: 110px; max-width: 320px;">
+                            {% if req.is_approved or req.is_collected %}
+                                <div class="text-success fw-bold d-flex align-items-center gap-1">
+                                    <i class="bi bi-patch-check-fill fs-3 text-success"></i>
+                                    <span class="fs-5 tracking-wide">VERIFIED & APPROVED</span>
+                                </div>
+                                <div class="text-muted small" style="font-size: 0.75rem;">
+                                    SmartBank {{ req.branch_code }} Official Stamp &bull; Pre-Reserved
+                                </div>
+                            {% elif req.is_rejected %}
+                                <div class="text-danger fw-bold d-flex align-items-center gap-1">
+                                    <i class="bi bi-x-octagon-fill fs-3 text-danger"></i>
+                                    <span class="fs-5">DECLINED</span>
+                                </div>
+                                <div class="text-danger small" style="font-size: 0.75rem;">{{ req.manager_remarks }}</div>
+                            {% else %}
+                                <div class="text-warning-emphasis fw-semibold d-flex align-items-center gap-1">
+                                    <i class="bi bi-hourglass-split fs-4 text-warning"></i>
+                                    <span>Awaiting Manager Review</span>
+                                </div>
+                                <div class="text-muted small" style="font-size: 0.75rem;">Virtual authorization in progress</div>
+                            {% endif %}
+                        </div>
+                        <div class="text-muted small mt-2">
+                            {% if req.manager_remarks %}
+                                <span class="text-dark fw-medium">Manager Note: {{ req.manager_remarks }}</span><br>
+                            {% endif %}
+                            <span>Branch Operations Desk &bull; {{ req.branch_name }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Offline Visit Instructions -->
+                <div class="bg-primary-subtle border border-primary-subtle rounded-3 p-3 mt-4">
+                    <h6 class="fw-bold text-primary-emphasis mb-2">
+                        <i class="bi bi-info-circle-fill me-1"></i>Offline Branch Fast-Track Instructions:
+                    </h6>
+                    <ol class="small text-muted mb-0 ps-3">
+                        <li class="mb-1">Visit <strong>{{ req.branch_name }}</strong> on <strong>{{ req.visit_date.strftime('%d-%b-%Y') }}</strong> during your time slot ({{ req.time_slot }}).</li>
+                        <li class="mb-1">Proceed directly to <strong>{{ req.priority_counter or 'Counter 2 (Fast-Track Cash)' }}</strong> without waiting in the regular token queue.</li>
+                        <li class="mb-1">Show this digital voucher on your smartphone or carry a printed copy along with your government photo ID (Aadhaar / PAN card).</li>
+                        <li>The teller will confirm your pre-approved token and dispense your pre-bundled cash in under 2 minutes!</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Voucher Footer -->
+            <div class="p-3 bg-light border-top text-center text-muted small">
+                <span>SmartBank Core Banking Platform &copy; 2026 &bull; Secure Financial Voucher ID: {{ req.token_number }} &bull; System Generated Document</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    body { background-color: #fff !important; }
+    .navbar, .sb-footer, .d-print-none { display: none !important; }
+    #printableVoucher { box-shadow: none !important; border: 1px solid #ccc !important; }
+}
+</style>
+{% endblock %}

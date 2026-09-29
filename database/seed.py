@@ -1,13 +1,13 @@
 import sys
 import os
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 # Add project root to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import create_app
-from models import db, User, Customer, Account, Transaction, Beneficiary, Notification, Card
+from models import db, User, Customer, Account, Transaction, Beneficiary, Notification, Card, BranchCashRequest
 
 def seed_database():
     """Seeds the database with realistic demo data for presentation and testing."""
@@ -407,6 +407,69 @@ def seed_database():
 
         db.session.add_all([card_rahul_visa, card_rahul_mc, card_priya_rupay, card_amit_visa])
 
+        # 9. Branch Cash Requests (Digital Slips)
+        bcr1 = BranchCashRequest(
+            token_number='CS-KPHB-20260930-8421',
+            customer_id=cust_rahul.id,
+            account_id=acc_rahul_savings.id,
+            branch_code='KPHB',
+            branch_name='KPHB Colony Branch',
+            ifsc_code='SMRT000KPHB',
+            amount=Decimal('50000.00'),
+            amount_words='Fifty Thousand Rupees Only',
+            visit_date=date.today() + timedelta(days=1),
+            time_slot='Morning: 10:00 AM - 12:00 PM',
+            purpose='Real Estate / Property Advance',
+            denomination_preference='₹500 x 100 notes',
+            signature_data='DIGITALLY SIGNED & VERIFIED BY RAHUL SHARMA',
+            status='PENDING'
+        )
+
+        bcr2 = BranchCashRequest(
+            token_number='CS-AMEERPET-20260929-1092',
+            customer_id=cust_priya.id,
+            account_id=acc_priya_savings.id,
+            branch_code='AMEERPET',
+            branch_name='Ameerpet Main Branch',
+            ifsc_code='SMRT000AMRP',
+            amount=Decimal('25000.00'),
+            amount_words='Twenty Five Thousand Rupees Only',
+            visit_date=date.today(),
+            time_slot='Afternoon: 12:00 PM - 02:00 PM',
+            purpose='Medical / Hospital Emergency',
+            denomination_preference='₹500 x 50 notes',
+            signature_data='DIGITALLY SIGNED & VERIFIED BY PRIYA PATEL',
+            status='APPROVED',
+            priority_counter='Counter 2 (Fast-Track Cash)',
+            manager_id=admin_user.id,
+            manager_remarks='Signature verified against Aadhaar KYC. Currency bundle reserved at Counter 2. Priority token active.',
+            approved_at=now - timedelta(hours=2)
+        )
+
+        bcr3 = BranchCashRequest(
+            token_number='CS-HITECH-20260927-4389',
+            customer_id=cust_amit.id,
+            account_id=acc_amit_current.id,
+            branch_code='HITECH',
+            branch_name='Hitech City Cyber Gateway Branch',
+            ifsc_code='SMRT000HTEC',
+            amount=Decimal('60000.00'),
+            amount_words='Sixty Thousand Rupees Only',
+            visit_date=date.today() - timedelta(days=2),
+            time_slot='Morning: 10:00 AM - 12:00 PM',
+            purpose='Business / Commercial Expenditure',
+            denomination_preference='₹500 x 120 notes',
+            signature_data='DIGITALLY SIGNED & VERIFIED BY AMIT VERMA',
+            status='COLLECTED',
+            priority_counter='Counter 2 (Executive Cash)',
+            manager_id=admin_user.id,
+            manager_remarks='Pre-approved by branch manager. Zero-wait cash disbursed.',
+            approved_at=now - timedelta(days=2, hours=3),
+            collected_at=now - timedelta(days=2, hours=1)
+        )
+
+        db.session.add_all([bcr1, bcr2, bcr3])
+
         db.session.commit()
         print("Database seed completed successfully!")
         print("Demo Accounts:")
@@ -419,6 +482,10 @@ def seed_database():
         print("  - Mastercard Titanium: 5421987654321098 | CVV: 319 | Exp: 08/30 | PIN: 4321 (Rahul)")
         print("  - RuPay Platinum:      6071829102938475 | CVV: 675 | Exp: 05/28 | PIN: 1234 (Priya)")
         print("  - Visa Business:       4716901234567890 | CVV: 528 | Exp: 11/29 | PIN: 9999 (Amit)")
+        print("Demo Branch Cash Slips:")
+        print("  - Token CS-KPHB-20260930-8421:      INR 50,000 [PENDING]   - KPHB Branch (Rahul)")
+        print("  - Token CS-AMEERPET-20260929-1092:  INR 25,000 [APPROVED]  - Ameerpet Branch (Priya)")
+        print("  - Token CS-HITECH-20260927-4389:    INR 60,000 [COLLECTED] - Hitech City Branch (Amit)")
 
 if __name__ == '__main__':
     seed_database()
