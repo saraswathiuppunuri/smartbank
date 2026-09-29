@@ -48,6 +48,8 @@ def new_slip():
 
     if request.method == 'POST':
         account_id = request.form.get('account_id')
+        account_number_str = request.form.get('account_number', '').strip()
+        account_holder_name = request.form.get('account_holder_name', '').strip()
         branch_code = request.form.get('branch_code', '').strip().upper()
         amount_str = request.form.get('amount', '').strip()
         visit_date_str = request.form.get('visit_date', '').strip()
@@ -56,10 +58,23 @@ def new_slip():
         denomination = request.form.get('denomination_preference', '').strip()
         signature_data = request.form.get('signature_data', '').strip()
 
-        # 1. Validate Account
-        account = Account.query.filter_by(id=account_id, customer_id=customer.id, status='ACTIVE').first()
+        # 1. Validate Account (by number or id)
+        account = None
+        if account_number_str:
+            account = Account.query.filter_by(account_number=account_number_str, customer_id=customer.id, status='ACTIVE').first()
+            if not account:
+                other_acc = Account.query.filter_by(account_number=account_number_str).first()
+                if other_acc:
+                    flash(f"Account number {account_number_str} belongs to a different customer profile. You can only withdraw from your own active account.", 'danger')
+                    return redirect(url_for('branch_cash.new_slip'))
+                else:
+                    flash(f"Account number '{account_number_str}' was not found. Please verify your 12-digit account number.", 'danger')
+                    return redirect(url_for('branch_cash.new_slip'))
+        elif account_id:
+            account = Account.query.filter_by(id=account_id, customer_id=customer.id, status='ACTIVE').first()
+
         if not account:
-            flash('Invalid account selected.', 'danger')
+            flash('Please enter or select a valid active account number.', 'danger')
             return redirect(url_for('branch_cash.new_slip'))
 
         # 2. Validate Branch
@@ -107,7 +122,7 @@ def new_slip():
 
         # 6. Validate Signature
         if not signature_data:
-            signature_data = f"DIGITALLY ACKNOWLEDGED BY {customer.full_name.upper()} ON {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
+            signature_data = f"DIGITALLY ACKNOWLEDGED BY {(account_holder_name or customer.full_name).upper()} ON {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
 
         try:
             token = BranchCashRequest.generate_token(branch_code)
@@ -116,6 +131,7 @@ def new_slip():
             cash_req = BranchCashRequest(
                 token_number=token,
                 customer_id=customer.id,
+                account_holder_name=account_holder_name or customer.full_name,
                 account_id=account.id,
                 branch_code=branch_code,
                 branch_name=branch_info['name'],

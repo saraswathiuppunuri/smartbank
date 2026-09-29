@@ -133,7 +133,7 @@
                     <td colspan="3" class="voucher-cell">
                         <div class="small text-muted mb-1" style="font-size: 0.75rem;">खाता धारक (कों) का (के) नाम / Name of the Account Holder(s):</div>
                         <div class="fw-bold text-dark fs-6 font-monospace px-2 py-1 bg-light border border-dark-subtle rounded-1">
-                            {{ req.customer.full_name | upper }}
+                            {{ (req.account_holder_name or req.customer.full_name) | upper }}
                         </div>
                     </td>
                 </tr>

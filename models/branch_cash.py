@@ -10,6 +10,7 @@ class BranchCashRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     token_number = db.Column(db.String(35), unique=True, nullable=False, index=True)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id', ondelete='CASCADE'), nullable=False, index=True)
+    account_holder_name = db.Column(db.String(100), nullable=True)
     account_id = db.Column(db.Integer, db.ForeignKey('accounts.id', ondelete='CASCADE'), nullable=False, index=True)
     branch_code = db.Column(db.String(20), nullable=False, index=True)
     branch_name = db.Column(db.String(100), nullable=False)
@@ -213,6 +214,7 @@ class BranchCashRequest(db.Model):
             'id': self.id,
             'token_number': self.token_number,
             'customer_name': self.customer.full_name if self.customer else None,
+            'account_holder_name': self.account_holder_name or (self.customer.full_name if self.customer else None),
             'account_number': self.account.account_number if self.account else None,
             'branch_code': self.branch_code,
             'branch_name': self.branch_name,

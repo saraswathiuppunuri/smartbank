@@ -160,12 +160,18 @@
                             </div>
                         </td>
 
-                        <!-- Name of Account Holder -->
+                        <!-- Name of Account Holder (Editable Normal Form Input) -->
                         <td colspan="3" class="voucher-cell">
-                            <div class="small text-muted mb-1" style="font-size: 0.75rem;">खाता धारक (कों) का (के) नाम / Name of the Account Holder(s):</div>
-                            <div class="fw-bold text-dark fs-6 font-monospace px-1 py-1 bg-light border border-dark-subtle rounded-1">
-                                {{ customer.full_name | upper }}
-                            </div>
+                            <label for="accountHolderInput" class="small text-muted mb-1 d-block fw-semibold" style="font-size: 0.75rem;">
+                                खाता धारक (कों) का (के) नाम / Name of the Account Holder(s): <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   name="account_holder_name" 
+                                   id="accountHolderInput" 
+                                   class="form-control form-control-sm border-dark fw-bold font-monospace text-uppercase" 
+                                   value="{{ customer.full_name | upper }}" 
+                                   placeholder="ENTER ACCOUNT HOLDER NAME" 
+                                   required>
                         </td>
                     </tr>
 
@@ -177,21 +183,47 @@
                             <div class="text-muted fw-semibold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.3px;">THIS FORM IS NOT A CHEQUE. PAYABLE TO ACCOUNT HOLDER (S) ONLY.</div>
                         </td>
 
-                        <!-- Account Number Boxed Digits -->
+                        <!-- Account Number Normal Input & Boxed Digits -->
                         <td colspan="3" class="voucher-cell">
                             <div class="d-flex justify-content-between align-items-center mb-1">
-                                <span class="fw-bold" style="font-size: 0.78rem;">खाता क्रमांक / Account Number:</span>
-                                <select class="form-select form-select-sm border-dark py-0 px-2 fw-semibold" style="width: auto; font-size: 0.75rem;" name="account_id" id="accountSelect" required onchange="updateAccountSelection(this)">
-                                    {% for acc in accounts %}
-                                        <option value="{{ acc.id }}" data-accno="{{ acc.account_number }}" data-balance="{{ acc.balance }}">
-                                            {{ acc.account_type }} ({{ acc.account_number }}) - Bal: {{ acc.balance | currency }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
+                                <label for="accountNumberInput" class="fw-bold mb-0" style="font-size: 0.78rem;">
+                                    खाता क्रमांक / Account Number: <span class="text-danger">*</span>
+                                </label>
+                                {% if accounts %}
+                                    <div class="d-flex align-items-center gap-1">
+                                        <span class="text-muted" style="font-size: 0.7rem;">Quick Fill:</span>
+                                        <select class="form-select form-select-sm border-dark py-0 px-1 fw-semibold" style="width: auto; font-size: 0.72rem;" id="quickAccountPicker" onchange="quickSelectAccount(this)">
+                                            {% for acc in accounts %}
+                                                <option value="{{ acc.account_number }}" data-id="{{ acc.id }}" data-balance="{{ acc.balance }}" data-type="{{ acc.account_type }}" {% if loop.first %}selected{% endif %}>
+                                                    {{ acc.account_number }} ({{ acc.account_type }} - {{ acc.balance | currency }})
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                {% endif %}
                             </div>
-                            <!-- Dynamic Boxed Account Digits -->
-                            <div class="d-flex flex-wrap" id="accountBoxesContainer">
-                                <!-- Digits populated by JavaScript -->
+
+                            <!-- Editable Normal Form Input for Account Number -->
+                            <div class="input-group input-group-sm mb-1">
+                                <span class="input-group-text border-dark bg-light font-monospace py-0 px-2 small"><i class="bi bi-wallet2"></i></span>
+                                <input type="text" 
+                                       name="account_number" 
+                                       id="accountNumberInput" 
+                                       class="form-control border-dark font-monospace fw-bold fs-6 text-primary py-1" 
+                                       value="{{ accounts[0].account_number if accounts else '' }}" 
+                                       maxlength="16" 
+                                       placeholder="Enter 12-digit Account Number (e.g. 100123456789)" 
+                                       required 
+                                       oninput="handleAccountNumberChange(this.value)">
+                                <input type="hidden" name="account_id" id="accountIdHidden" value="{{ accounts[0].id if accounts else '' }}">
+                            </div>
+
+                            <!-- Dynamic Boxed Account Digits Display matching physical bank slip -->
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="text-muted small" style="font-size: 0.65rem;">SLIP BOXES:</span>
+                                <div class="d-flex flex-wrap" id="accountBoxesContainer">
+                                    <!-- Digits populated by JavaScript -->
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -397,40 +429,71 @@
 
 {% block extra_js %}
 <script>
-// --- Initialize Account Digits in Boxes ---
+// --- Render Boxed Digits for Account Number ---
 function renderAccountDigits(accountNumber) {
     const container = document.getElementById('accountBoxesContainer');
+    if (!container) return;
     container.innerHTML = '';
-    const accStr = String(accountNumber).padStart(12, '0');
+    const accStr = String(accountNumber || '').trim();
+    const totalBoxes = Math.max(12, accStr.length);
     
-    for (let i = 0; i < accStr.length; i++) {
+    for (let i = 0; i < totalBoxes; i++) {
         const box = document.createElement('span');
         box.className = 'slip-digit-box';
-        box.textContent = accStr[i];
+        box.textContent = accStr[i] || '';
         container.appendChild(box);
     }
 }
 
-// --- Sync Date Digits in Header Box ---
-function syncDateDigits(dateStr) {
-    if (!dateStr) return;
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-        document.getElementById('dateDay').textContent = parts[2];
-        document.getElementById('dateMonth').textContent = parts[1];
-        document.getElementById('dateYear').textContent = parts[0];
+// --- Customer Accounts Data for Real-time Balance Lookup ---
+const customerAccounts = [
+    {% for acc in accounts %}
+    { id: "{{ acc.id }}", accno: "{{ acc.account_number }}", balance: {{ acc.balance }}, type: "{{ acc.account_type }}" },
+    {% endfor %}
+];
+
+// --- Handle Manual Account Number Typing ---
+function handleAccountNumberChange(val) {
+    const cleanVal = val.replace(/\D/g, '').substring(0, 16);
+    document.getElementById('accountNumberInput').value = cleanVal;
+    renderAccountDigits(cleanVal);
+
+    // Look for matching account to update available balance
+    const matched = customerAccounts.find(a => a.accno === cleanVal);
+    const balDisplay = document.getElementById('availableBalanceDisplay');
+    const idHidden = document.getElementById('accountIdHidden');
+
+    if (matched) {
+        if (idHidden) idHidden.value = matched.id;
+        if (balDisplay) balDisplay.textContent = '₹' + matched.balance.toLocaleString('en-IN', {minimumFractionDigits: 2});
+    } else {
+        if (cleanVal.length >= 10 && balDisplay) {
+            balDisplay.textContent = 'Verifying Account...';
+        }
     }
 }
 
-// --- Account Selection Change Handler ---
-function updateAccountSelection(sel) {
+// --- Quick Account Selector (Dropdown to input) ---
+function quickSelectAccount(sel) {
+    if (!sel || !sel.value) return;
     const opt = sel.options[sel.selectedIndex];
-    if (!opt) return;
-    const accNo = opt.dataset.accno;
+    const accNo = sel.value;
+    const accId = opt.dataset.id;
     const bal = parseFloat(opt.dataset.balance || 0);
+
+    const input = document.getElementById('accountNumberInput');
+    if (input) input.value = accNo;
+
+    const idHidden = document.getElementById('accountIdHidden');
+    if (idHidden) idHidden.value = accId;
+
+    const balDisplay = document.getElementById('availableBalanceDisplay');
+    if (balDisplay) balDisplay.textContent = '₹' + bal.toLocaleString('en-IN', {minimumFractionDigits: 2});
+
     renderAccountDigits(accNo);
-    document.getElementById('availableBalanceDisplay').textContent = '₹' + bal.toLocaleString('en-IN', {minimumFractionDigits: 2});
 }
+
+// --- Sync Date Digits in Header Box ---
 
 // --- Branch Selection Change Handler ---
 function updateBranchDetails(sel) {
@@ -582,8 +645,10 @@ document.getElementById('cashSlipForm').addEventListener('submit', function (e) 
 
 // --- Run on page load ---
 document.addEventListener('DOMContentLoaded', function () {
-    const accSelect = document.getElementById('accountSelect');
-    if (accSelect) updateAccountSelection(accSelect);
+    const accInput = document.getElementById('accountNumberInput');
+    if (accInput) {
+        handleAccountNumberChange(accInput.value);
+    }
 
     const branchSelect = document.getElementById('branchSelect');
     if (branchSelect) updateBranchDetails(branchSelect);

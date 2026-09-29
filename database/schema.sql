@@ -157,6 +157,7 @@ CREATE TABLE `branch_cash_requests` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `token_number` VARCHAR(35) NOT NULL UNIQUE,
     `customer_id` INT NOT NULL,
+    `account_holder_name` VARCHAR(100) NULL,
     `account_id` INT NOT NULL,
     `branch_code` VARCHAR(20) NOT NULL,
     `branch_name` VARCHAR(100) NOT NULL,
